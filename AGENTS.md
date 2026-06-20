@@ -2,12 +2,20 @@
 
 ## Project Location
 - Work in `G:\Hosted Sites\revolvex`.
-- Treat this folder as a Dreamweaver/FTP-managed mirror where saving files may upload them to the live server.
-- Do not use Git for this project.
+- This folder is now the local Git working copy for the RevolveX app.
+- The GitHub remote is `https://github.com/entacom/revolvex.git` on branch `main`.
+- The production cPanel clone lives at `/home/revolvexcom/revolvex`.
+- The production public web root is `/home/revolvexcom/public_html`.
+- Dreamweaver/FTP history matters, but the current preferred deployment path is GitHub plus the in-app `Git Update` page.
 
 ## Deployment Safety
-- Be careful with file edits because Dreamweaver may upload on save.
-- For any future code changes, create timestamped local backup copies before editing live-mirrored files.
+- Commit and push completed changes to GitHub after local checks.
+- For normal production updates, use the app menu item `Git Update`, which downloads the latest GitHub ZIP and deploys the `app/` folder to `/home/revolvexcom/public_html`.
+- cPanel Git deploy is only needed to bootstrap/fix the Git Update page itself if the live copy cannot self-update.
+- The cPanel account has `exec` and `shell_exec` disabled, so do not rely on PHP running `git`, `rsync`, or shell commands in production.
+- The in-app deploy requires cURL or `allow_url_fopen`, `ZipArchive`, a writable temp folder, and writable `/home/revolvexcom/public_html`.
+- Be careful with any direct Dreamweaver save/upload because it can bypass Git history.
+- For high-risk edits or large refactors, create timestamped local backup copies before editing.
 - Do not create reports, scratch files, or generated artifacts inside the FTP mirror unless explicitly requested.
 
 ## Server Layout Notes
@@ -16,8 +24,8 @@
 - The current code references `/home/revolvexcom/web_config_ft.php`; verify server path before changing config includes.
 
 ## Current Review Mode
-- Default to report-first security review.
-- Show issues before making fixes.
+- Default to fixing requested issues directly when the user asks for implementation, while keeping changes scoped and production-safe.
+- For broad security review requests, report issues clearly and prioritize them before large patches.
 - Do not repeat secret values in reports or chat.
 - Prioritize security findings by Critical, High, Medium, and Low.
 - Keep this file updated with the active priority plan and confirmed findings.
@@ -40,6 +48,14 @@
 
 ## Priority Work Queue
 0. Current feature work:
+   - GitHub/cPanel deployment is now active:
+     - Local repo: `G:\Hosted Sites\revolvex`.
+     - GitHub repo: `entacom/revolvex`.
+     - cPanel clone: `/home/revolvexcom/revolvex`.
+     - Public deploy target: `/home/revolvexcom/public_html`.
+     - `.cpanel.yml` copies `app/` to public_html for cPanel deploys.
+     - In-app `Git Update` page now deploys via GitHub ZIP download and PHP file copy because shell command execution is disabled.
+     - `.gitignore` excludes secrets, generated files, logs, backups, cert/key files, Dreamweaver notes, and editor junk.
    - Automatic order activity entries added for status changes, delivery date changes, invoice processing, and customer/details updates.
    - Activity descriptions are grouped by category: status, delivery date, created date, notes, invoice processing, and customer/details.
    - Admin dashboard Recent Activity now surfaces order/customer context from `tblOrderActivity` instead of plain descriptions only.

@@ -1,11 +1,11 @@
 # RevolveX Product Requirements Document
 
-Last updated: 2026-05-27
+Last updated: 2026-06-20
 
 ## Purpose
 RevolveX is the operational system for managing quotes, orders, production, purchases, inventory, reports, document generation, email sending, and accounting integrations for Featherstone Steel & Purlins.
 
-The current product goal is to keep improving the system as a practical business tool while reducing production security risk. Changes must respect the Dreamweaver/FTP workflow: no Git workflow, no unplanned rewrites, and backup-first handling before edits.
+The current product goal is to keep improving the system as a practical business tool while reducing production security risk. Changes now use a GitHub-backed workflow with cPanel hosting: develop locally in `G:\Hosted Sites\revolvex`, commit/push to `entacom/revolvex`, then deploy through the in-app `Git Update` page where possible.
 
 ## Current Objectives
 1. Make daily order, purchase, inventory, report, and dashboard workflows faster and clearer.
@@ -37,6 +37,7 @@ The current product goal is to keep improving the system as a practical business
 - Uploads/files: order attachment upload validation, safer JSON upload errors, S3 presigned URL normalization, and ownership-checked order attachment deletion.
 - Security: disabled dynamic table API, disabled diagnostic/test endpoints, blocked public metadata/log/backup/cert files, removed Dreamweaver `_notes`, removed `?d=` session dump, added first-pass auth guards to high-risk endpoints.
 - Dependencies: updated TCPDF to `6.7.8`, PHPMailer to `6.12.0`, Bootstrap to `5.3.8`, jQuery UI to `1.14.2`; removed unused public Chart.js, Quill, PHP Email Form, Remix Icon, Simple DataTables, TinyMCE, and public AWS SDK copy.
+- Deployment: initialized Git, pushed the app to GitHub at `entacom/revolvex`, added `.gitignore`, added `.cpanel.yml`, connected cPanel Git at `/home/revolvexcom/revolvex`, and added the in-app `Git Update` page. Because cPanel disables `exec` and `shell_exec`, the app deployer now downloads the GitHub ZIP and copies the `app/` folder to `/home/revolvexcom/public_html` using PHP.
 
 ## Priority Backlog
 
@@ -103,19 +104,24 @@ The current product goal is to keep improving the system as a practical business
    - Keep report queries efficient and indexed.
 
 ## Non-Goals For Now
-- No Git workflow.
 - No full framework rewrite.
 - No large database schema redesign unless a specific feature or security fix requires it.
 - No new public diagnostic/debug endpoints.
 - No storing reports or generated scratch files in the FTP mirror unless explicitly requested.
 
 ## Deployment And Backup Requirements
-- Before code edits, create timestamped local backups under `G:\Hosted Sites\revolvex_backups`.
-- Keep file changes scoped and upload lists explicit.
+- Local development path: `G:\Hosted Sites\revolvex`.
+- GitHub remote: `https://github.com/entacom/revolvex.git`.
+- Production cPanel clone: `/home/revolvexcom/revolvex`.
+- Production public web root: `/home/revolvexcom/public_html`.
+- Normal deployment path: commit locally, push to GitHub, then use the app menu item `Git Update` to download and deploy the latest GitHub version.
+- cPanel Git deploy remains the fallback/bootstrapping path if the live Git Update page itself needs repair.
+- Keep file changes scoped and commits clear.
+- Before high-risk code edits or schema-sensitive changes, create timestamped local backups under `G:\Hosted Sites\revolvex_backups`.
 - Do not repeat credential values from `web_config_ft.php`.
 - Treat `web_config_ft.php` as reference-only and keep it outside public web access.
 - PHP lint changed PHP files with `C:\php-8.5.6\php.exe -l` where possible.
-- For dependency changes, list folders/files to upload and folders/files to delete from the server.
+- For dependency changes, list folders/files to upload/delete or include them in the Git deploy, depending on the safest path.
 
 ## Acceptance Criteria
 - Daily pages remain usable after every change: dashboard, order list, order detail, purchasing list, purchase detail, inventory, reports, production, PDF generation, and email sending.
