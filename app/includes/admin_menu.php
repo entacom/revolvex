@@ -91,8 +91,8 @@
         </li>
         <li class="nav-item">
             <a class="nav-link collapsed" href="?p=admin_dashboard">
-                <i class="bx bx-test-tube"></i>
-                <span>Test</span>
+                <i class="bx bx-git-branch"></i>
+                <span>Git Update</span>
             </a>
         </li>
         <?php if (in_array($_SESSION['session_group_id'], [11, 12, 13])) { ?>
