@@ -12,7 +12,7 @@ function LoadGitUpdateStatus() {
         data: { action: 'status' },
         success: function(response) {
             if (!response || !response.success) {
-                $('#git_update_message').html('<div class="alert alert-warning">Could not load Git status.</div>');
+                $('#git_update_message').html('<div class="alert alert-warning">Could not load Git status: ' + escapeGitText(response && response.message ? response.message : 'Unknown error') + '</div>');
                 return;
             }
 
@@ -33,9 +33,21 @@ function LoadGitUpdateStatus() {
                 historyHtml += '</div></div>';
             });
             $('#git_commit_history').html(historyHtml || '<div class="git-update-muted">No commits found.</div>');
+            if (response.diagnostics) {
+                $('#git_deploy_output').text(
+                    'Diagnostics\n' +
+                    'Repo path: ' + response.diagnostics.repo_path + '\n' +
+                    'Repo exists: ' + response.diagnostics.repo_exists + '\n' +
+                    'Deploy path: ' + response.diagnostics.deploy_path + '\n' +
+                    'Deploy exists: ' + response.diagnostics.deploy_exists + '\n' +
+                    'exec available: ' + response.diagnostics.exec_available + '\n' +
+                    'shell_exec available: ' + response.diagnostics.shell_exec_available
+                );
+            }
         },
         error: function(xhr) {
-            $('#git_update_message').html('<div class="alert alert-danger">' + escapeGitText(xhr.responseText || 'Git status failed.') + '</div>');
+            $('#git_update_message').html('<div class="alert alert-danger">Git status failed: ' + escapeGitText(xhr.responseText || xhr.statusText || 'No server response') + '</div>');
+            $('#git_deploy_output').text(xhr.responseText || xhr.statusText || 'No server response');
         }
     });
 }
@@ -64,7 +76,8 @@ function RunGitUpdate() {
             LoadGitUpdateStatus();
         },
         error: function(xhr) {
-            $('#git_update_message').html('<div class="alert alert-danger">' + escapeGitText(xhr.responseText || 'Git update failed.') + '</div>');
+            $('#git_update_message').html('<div class="alert alert-danger">Git update failed: ' + escapeGitText(xhr.responseText || xhr.statusText || 'No server response') + '</div>');
+            $('#git_deploy_output').text(xhr.responseText || xhr.statusText || 'No server response');
         },
         complete: function() {
             $('#git_update_button').prop('disabled', false).html('<i class="bx bx-cloud-download"></i> Pull & Deploy');

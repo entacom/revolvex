@@ -20,12 +20,46 @@ $deployLog = $repoPath . '/deploy_history.log';
 $lockFile = sys_get_temp_dir() . '/revolvex_git_update.lock';
 
 function gitUpdateRun($command, $cwd) {
+    if (!is_dir($cwd)) {
+        return array('ok' => false, 'output' => 'Working directory not found: ' . $cwd);
+    }
+
     $fullCommand = 'cd ' . escapeshellarg($cwd) . ' && ' . $command . ' 2>&1';
-    return trim((string)shell_exec($fullCommand));
+
+    if (function_exists('exec')) {
+        $lines = array();
+        $exitCode = 0;
+        @exec($fullCommand, $lines, $exitCode);
+        return array(
+            'ok' => $exitCode === 0,
+            'output' => trim(implode("\n", $lines)),
+            'exit_code' => $exitCode
+        );
+    }
+
+    if (function_exists('shell_exec')) {
+        $output = @shell_exec($fullCommand);
+        return array(
+            'ok' => $output !== null,
+            'output' => trim((string)$output),
+            'exit_code' => null
+        );
+    }
+
+    return array(
+        'ok' => false,
+        'output' => 'PHP command execution is disabled on this hosting account. Enable exec or shell_exec, or use cPanel Pull/Deploy.',
+        'exit_code' => null
+    );
+}
+
+function gitUpdateOutput($command, $cwd) {
+    $result = gitUpdateRun($command, $cwd);
+    return $result['output'];
 }
 
 function gitUpdateHistory($repoPath) {
-    $raw = gitUpdateRun('git log -8 --date=format:"%d/%m/%Y %I:%M %p" --pretty=format:"%h%x1f%ad%x1f%an%x1f%s"', $repoPath);
+    $raw = gitUpdateOutput('git log -8 --date=format:"%d/%m/%Y %I:%M %p" --pretty=format:"%h%x1f%ad%x1f%an%x1f%s"', $repoPath);
     $rows = array();
     foreach (explode("\n", $raw) as $line) {
         $parts = explode("\x1f", $line);
@@ -42,10 +76,21 @@ function gitUpdateHistory($repoPath) {
 }
 
 function gitUpdateStatusPayload($repoPath, $deployLog) {
-    $hash = gitUpdateRun('git rev-parse --short HEAD', $repoPath);
-    $message = gitUpdateRun('git log -1 --pretty=format:%s', $repoPath);
-    $local = gitUpdateRun('git rev-parse HEAD', $repoPath);
-    $remote = gitUpdateRun('git ls-remote origin refs/heads/main | awk "{print $1}"', $repoPath);
+    $diagnostics = array(
+        'repo_path' => $repoPath,
+        'repo_exists' => is_dir($repoPath),
+        'deploy_path' => '/home/revolvexcom/public_html',
+        'deploy_exists' => is_dir('/home/revolvexcom/public_html'),
+        'exec_available' => function_exists('exec'),
+        'shell_exec_available' => function_exists('shell_exec')
+    );
+
+    $hash = gitUpdateOutput('git rev-parse --short HEAD', $repoPath);
+    $message = gitUpdateOutput('git log -1 --pretty=format:%s', $repoPath);
+    $local = gitUpdateOutput('git rev-parse HEAD', $repoPath);
+    $remoteLine = gitUpdateOutput('git ls-remote origin refs/heads/main', $repoPath);
+    $remoteParts = preg_split('/\s+/', trim($remoteLine));
+    $remote = isset($remoteParts[0]) ? $remoteParts[0] : '';
     $status = 'Unknown';
     $detail = 'Remote check unavailable.';
 
@@ -74,7 +119,8 @@ function gitUpdateStatusPayload($repoPath, $deployLog) {
         'current' => array('short_hash' => $hash, 'message' => $message),
         'remote' => array('status' => $status, 'detail' => $detail),
         'last_deploy' => array('title' => $lastDeployTitle, 'detail' => $lastDeployDetail),
-        'history' => gitUpdateHistory($repoPath)
+        'history' => gitUpdateHistory($repoPath),
+        'diagnostics' => $diagnostics
     );
 }
 
@@ -98,15 +144,21 @@ if ($action === 'deploy') {
         }
 
         $outputParts[] = '$ git pull --ff-only origin main';
-        $pullOutput = gitUpdateRun('git pull --ff-only origin main', $repoPath);
-        $outputParts[] = $pullOutput;
+        $pullResult = gitUpdateRun('git pull --ff-only origin main', $repoPath);
+        $outputParts[] = $pullResult['output'];
+        if (!$pullResult['ok']) {
+            throw new Exception('Git pull failed. ' . $pullResult['output']);
+        }
 
         $outputParts[] = '$ rsync app/ to public_html/';
         $rsyncCommand = '/bin/rsync -av --exclude=".git" --exclude=".cpanel.yml" --exclude="_notes" --exclude="*/_notes" --exclude="files/" --exclude="web_config_ft.php" ' . escapeshellarg($repoPath . '/app/') . ' ' . escapeshellarg($deployPath . '/');
-        $rsyncOutput = gitUpdateRun($rsyncCommand, $repoPath);
-        $outputParts[] = $rsyncOutput;
+        $rsyncResult = gitUpdateRun($rsyncCommand, $repoPath);
+        $outputParts[] = $rsyncResult['output'];
+        if (!$rsyncResult['ok']) {
+            throw new Exception('Deploy copy failed. ' . $rsyncResult['output']);
+        }
 
-        $hash = gitUpdateRun('git rev-parse --short HEAD', $repoPath);
+        $hash = gitUpdateOutput('git rev-parse --short HEAD', $repoPath);
         $logLine = date('Y-m-d H:i:s') . ' | user_id=' . (int)$_SESSION['session_user_id'] . ' | ' . $hash;
         file_put_contents($deployLog, $logLine . PHP_EOL, FILE_APPEND);
 
