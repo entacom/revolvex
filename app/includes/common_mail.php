@@ -462,6 +462,42 @@ function sendSalesOrderEmailxx($order_id, $pdfPath, $email_to1, $email_to2 = nul
     }
 }
 
+function generateSalesEmailPdfIfMissing($order_id, $document_type, $absolutePdfPath) {
+    $filesDir = dirname($absolutePdfPath);
+    if (!is_dir($filesDir)) {
+        mkdir($filesDir, 0755, true);
+    }
+
+    if (is_file($absolutePdfPath)) {
+        return true;
+    }
+
+    $pdfScript = 'sales_invoice_v2.php';
+    if ($document_type === 'quote') {
+        $pdfScript = 'sales_quote_v1.php';
+    } elseif ($document_type === 'order_confirmation') {
+        $pdfScript = 'sales_order_v1.php';
+    }
+
+    $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+    $url = $scheme . '://' . $host . '/pdf/' . $pdfScript . '?order_id=' . urlencode((string)$order_id) . '&s=1';
+
+    $headers = "Cookie: " . session_name() . "=" . session_id() . "\r\n";
+    $context = stream_context_create([
+        'http' => [
+            'method' => 'GET',
+            'header' => $headers,
+            'timeout' => 20,
+            'ignore_errors' => true,
+        ],
+    ]);
+
+    @file_get_contents($url, false, $context);
+
+    return is_file($absolutePdfPath);
+}
+
 function sendSalesOrderEmail($order_id, $pdfPath, $email_to1, $email_to2 = null, $subject = null, $body = null, $document_type = 'invoice') {
     // Always return JSON to your AJAX
     if (!headers_sent()) header('Content-Type: application/json');
@@ -511,7 +547,11 @@ function sendSalesOrderEmail($order_id, $pdfPath, $email_to1, $email_to2 = null,
 
     $absolutePdfPath = $_SERVER['DOCUMENT_ROOT'] . $pdfPath;
     if (!is_file($absolutePdfPath)) {
-        echo json_encode(['success' => false, 'message' => 'PDF not found.']); exit;
+        generateSalesEmailPdfIfMissing($order_id, $document_type, $absolutePdfPath);
+    }
+
+    if (!is_file($absolutePdfPath)) {
+        echo json_encode(['success' => false, 'message' => 'PDF not found. The system could not generate the attachment.']); exit;
     }
 
     try {

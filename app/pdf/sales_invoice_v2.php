@@ -325,6 +325,10 @@ $pdf->writeHTML($tbl_header1 . $tbl1 . $tbl_footer1, true, false, false, false, 
 $pdf->writeHTML($tbl_header2 . $tbl2 . $tbl_footer2, true, false, false, false, '');
 
 // Close and output PDF document
+$files_dir = $_SERVER['DOCUMENT_ROOT'] . "/files";
+if (!is_dir($files_dir)) {
+    mkdir($files_dir, 0755, true);
+}
 $save_path = $_SERVER['DOCUMENT_ROOT'] . "/files/sales_invoice_v2{$id}.pdf";
 $pdf->Output($save_path, 'F');
 

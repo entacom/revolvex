@@ -268,6 +268,10 @@ $pdf->writeHTML($tbl_header2 . $tbl2 . $tbl_footer2, true, false, false, false, 
 $pdf->writeHTML($tbl_header3 . $tbl3 . $tbl_footer3, true, false, false, false, '');
 //Close and output PDF document
 if (isset($_GET['s']) && $_GET['s'] == '1') {
+    $files_dir = $_SERVER['DOCUMENT_ROOT'] . "/files";
+    if (!is_dir($files_dir)) {
+        mkdir($files_dir, 0755, true);
+    }
     $save_path = $_SERVER['DOCUMENT_ROOT'] . "/files/sales_order_v1{$id}.pdf";
     $pdf->Output($save_path, 'F');
 } else {
