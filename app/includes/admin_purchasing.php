@@ -26,17 +26,17 @@
             </li>
 
             <li class="nav-item" role="presentation">
-                <a class="nav-link active" id="order_bill-tab" data-bs-toggle="tab" onclick="LoadSubtab('order_bill')" role="tab" aria-controls="order_bill" aria-selected="true">
+                <a class="nav-link" id="order_bill-tab" data-bs-toggle="tab" onclick="LoadSubtab('order_bill')" role="tab" aria-controls="order_bill" aria-selected="false">
                     <i class='bx bxs-receipt'></i> Receive Items
                 </a>
             </li>
             <li class="nav-item" role="presentation">
-                <a class="nav-link active" id="order_bill-tab" data-bs-toggle="tab" onclick="LoadSubtab('order_invoice')" role="tab" aria-controls="order_bill" aria-selected="true">
+                <a class="nav-link" id="order_invoice-tab" data-bs-toggle="tab" onclick="LoadSubtab('order_invoice')" role="tab" aria-controls="order_invoice" aria-selected="false">
                     <i class='bx bxs-receipt'></i> Invoice
                 </a>
             </li>
             <li class="nav-item" role="presentation">
-                <a class="nav-link active" id="purchase_activity-tab" data-bs-toggle="tab" onclick="LoadSubtab('purchase_activity')" role="tab" aria-controls="purchase_activity" aria-selected="true">
+                <a class="nav-link" id="purchase_activity-tab" data-bs-toggle="tab" onclick="LoadSubtab('purchase_activity')" role="tab" aria-controls="purchase_activity" aria-selected="false">
                     <i class='bx bx-line-chart'></i> Activity
                 </a>
             </li>

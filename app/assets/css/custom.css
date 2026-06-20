@@ -10,8 +10,15 @@
     cursor: pointer;
 }
 .custom-tabs {
-    gap: 0;
+    background: linear-gradient(180deg, #f8fafd 0%, #eef3fa 100%);
+    border: 1px solid #dbe4ef;
+    border-bottom: 0;
+    border-radius: 8px 8px 0 0;
+    box-shadow: 0 8px 22px rgba(31, 45, 61, 0.05);
+    gap: 0.15rem;
     align-items: flex-end;
+    overflow-x: auto;
+    padding: 0.28rem 0.28rem 0;
 }
 
 .custom-tabs .nav-item {
@@ -19,26 +26,38 @@
 }
 
 .custom-tabs .nav-link {
-    color: #333; /* Tab text color */
-    background-color: #f0f0f0; /* Tab background color */
-    border: 1px solid #ccc; /* Tab border color */
-    border-radius: 0.25rem 0.25rem 0 0; /* Rounded corners */
+    align-items: center;
+    background: transparent;
+    border: 0;
+    border-bottom: 3px solid transparent;
+    border-radius: 6px 6px 0 0;
+    color: #44566c;
+    display: inline-flex;
+    font-size: 0.9rem;
+    font-weight: 650;
+    gap: 0.32rem;
     margin: 0;
+    min-height: 38px;
+    padding: 0.52rem 0.8rem;
     white-space: nowrap;
+    transition: background-color 140ms ease, color 140ms ease, border-color 140ms ease;
 }
 
 .custom-tabs .nav-item + .nav-item .nav-link {
-    margin-left: -1px;
+    margin-left: 0;
 }
 
 .custom-tabs .nav-link.active {
-    background-color: #e1e1e1; /* Active tab background color */
-    border-color: #ccc; /* Active tab border color */
+    background: #fff;
+    border-color: #1f5fbd;
+    color: #102a43;
+    box-shadow: 0 -1px 0 #fff inset;
 }
 
 .custom-tabs .nav-link:hover {
-    background-color: #ddd; /* Hovered tab background color */
-    border-color: #ccc; /* Hovered tab border color */
+    background: rgba(31, 95, 189, 0.08);
+    border-color: rgba(31, 95, 189, 0.32);
+    color: #1f5fbd;
 }
 
 .order-page-main {

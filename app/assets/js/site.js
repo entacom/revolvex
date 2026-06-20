@@ -75,6 +75,26 @@ function copyToClipboard(text) {
         console.error('Could not copy text to clipboard: ', err);
     });
 }
+
+document.addEventListener('click', function(event) {
+    const tabLink = event.target.closest('.custom-tabs .nav-link');
+    if (!tabLink) {
+        return;
+    }
+
+    const tabList = tabLink.closest('.custom-tabs');
+    if (!tabList) {
+        return;
+    }
+
+    tabList.querySelectorAll('.nav-link').forEach(function(link) {
+        link.classList.remove('active');
+        link.setAttribute('aria-selected', 'false');
+    });
+    tabLink.classList.add('active');
+    tabLink.setAttribute('aria-selected', 'true');
+});
+
 function PrintPurchaseOrder(order_id) {
     window.open('pdf/purchase_order_v1.php?pid=' + order_id, '_blank');
 }
