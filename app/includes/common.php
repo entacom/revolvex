@@ -359,6 +359,7 @@ function getAppDocumentTitle() {
         'admin_inventory' => 'Inventory',
         'admin_production' => 'Production',
         'admin_reports' => 'Reports',
+        'admin_git_update' => 'Git Update',
         'admin_company' => 'Company',
         'admin_setup' => 'Setup',
         'admin_source' => 'Sources',

@@ -342,6 +342,111 @@
     line-height: 1;
     padding: 0.28rem 0.34rem;
 }
+
+.git-update-shell {
+    background: #f5f8fc;
+    border: 1px solid #dce5f0;
+    border-radius: 8px;
+    padding: 1rem;
+}
+
+.git-update-header {
+    align-items: center;
+    background: #fff;
+    border: 1px solid #dce5f0;
+    border-radius: 8px;
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+    padding: 1rem;
+}
+
+.git-update-kicker {
+    color: #697386;
+    font-size: 0.72rem;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.git-update-header h4 {
+    color: #102a43;
+    font-size: 1.2rem;
+    font-weight: 800;
+    margin: 0.1rem 0;
+}
+
+.git-update-header p {
+    color: #697386;
+    font-size: 0.85rem;
+    margin: 0;
+}
+
+.git-update-card {
+    background: #fff;
+    border: 1px solid #dce5f0;
+    border-radius: 8px;
+    box-shadow: 0 8px 22px rgba(31, 45, 61, 0.06);
+    height: 100%;
+    padding: 0.9rem;
+}
+
+.git-update-card-title {
+    color: #697386;
+    font-size: 0.72rem;
+    font-weight: 800;
+    margin-bottom: 0.55rem;
+    text-transform: uppercase;
+}
+
+.git-update-version {
+    color: #102a43;
+    font-size: 1rem;
+    font-weight: 800;
+}
+
+.git-update-muted,
+.git-history-meta {
+    color: #697386;
+    font-size: 0.78rem;
+}
+
+.git-history-row {
+    border-bottom: 1px solid #edf2f7;
+    display: grid;
+    gap: 0.7rem;
+    grid-template-columns: 74px 1fr;
+    padding: 0.5rem 0;
+}
+
+.git-history-row:hover {
+    background: #f4f8ff;
+}
+
+.git-history-hash {
+    color: #1f5fbd;
+    font-family: Consolas, monospace;
+    font-size: 0.82rem;
+    font-weight: 800;
+}
+
+.git-history-message {
+    color: #102a43;
+    font-size: 0.86rem;
+    font-weight: 700;
+}
+
+.git-update-output {
+    background: #102033;
+    border-radius: 6px;
+    color: #d9e8ff;
+    font-size: 0.76rem;
+    max-height: 360px;
+    min-height: 220px;
+    overflow: auto;
+    padding: 0.8rem;
+    white-space: pre-wrap;
+}
 .client-thumb {
     position: relative;
     width: 100px; /* Adjust width as needed */

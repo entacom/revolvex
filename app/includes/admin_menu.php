@@ -90,7 +90,7 @@
             </a>
         </li>
         <li class="nav-item">
-            <a class="nav-link collapsed" href="?p=admin_dashboard">
+            <a class="nav-link collapsed" href="?p=admin_git_update">
                 <i class="bx bx-git-branch"></i>
                 <span>Git Update</span>
             </a>
