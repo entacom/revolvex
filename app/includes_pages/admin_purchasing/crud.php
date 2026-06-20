@@ -81,7 +81,7 @@ function findPurchaseStatusIdByNames($conn, $company_id, $statusNames) {
         FROM tblPurchaseStatus
         WHERE company_id = :company_id
           AND LOWER(TRIM(description)) IN (" . implode(',', $placeholders) . ")
-        ORDER BY ordering ASC, id ASC
+        ORDER BY id ASC
         LIMIT 1
     ");
     foreach ($params as $key => $value) {
@@ -348,8 +348,17 @@ if (isset($_POST['action']) && $_POST['action'] === 'save_purchase_confirmation'
         }
 
         $safeName = preg_replace('/[^A-Za-z0-9._-]+/', '_', $fileName);
+        if ($safeName === '' || $safeName === '_' || $safeName === '.' || $safeName === '..') {
+            $safeName = 'confirmation.' . $extension;
+        }
         $fileKey = 'purchase_confirmations/' . $pid . '_' . bin2hex(random_bytes(8)) . '_' . $safeName;
-        $uploadResult = uploadFileToS3($_FILES['confirmation_file']['tmp_name'], $fileKey);
+        try {
+            $uploadResult = uploadFileToS3($_FILES['confirmation_file']['tmp_name'], $fileKey);
+        } catch (Throwable $e) {
+            error_log("Could not upload purchase confirmation for PO {$pid}: " . $e->getMessage());
+            echo json_encode(['success' => false, 'message' => 'Could not upload confirmation file.']);
+            exit;
+        }
 
         if (is_string($uploadResult) && strpos($uploadResult, 'Error:') === 0) {
             error_log("Could not upload purchase confirmation for PO {$pid}: " . $uploadResult);
@@ -360,19 +369,23 @@ if (isset($_POST['action']) && $_POST['action'] === 'save_purchase_confirmation'
         $uploadedAt = time();
 
         if (purchaseFilesTableExists($conn)) {
-            $filesStmt = $conn->prepare("
-                INSERT INTO tblPurchaseFiles (pid, company_id, type_id, path, filename, description, added, user_id)
-                VALUES (:pid, :company_id, :type_id, :path, :filename, :description, :added, :user_id)
-            ");
-            $filesStmt->bindValue(':pid', $pid, PDO::PARAM_INT);
-            $filesStmt->bindValue(':company_id', $company_id, PDO::PARAM_INT);
-            $filesStmt->bindValue(':type_id', 16, PDO::PARAM_INT);
-            $filesStmt->bindValue(':path', 'purchase_confirmations');
-            $filesStmt->bindValue(':filename', basename($fileKey));
-            $filesStmt->bindValue(':description', $fileName);
-            $filesStmt->bindValue(':added', $uploadedAt, PDO::PARAM_INT);
-            $filesStmt->bindValue(':user_id', $_SESSION['session_user_id'], PDO::PARAM_INT);
-            $filesStmt->execute();
+            try {
+                $filesStmt = $conn->prepare("
+                    INSERT INTO tblPurchaseFiles (pid, company_id, type_id, path, filename, description, added, user_id)
+                    VALUES (:pid, :company_id, :type_id, :path, :filename, :description, :added, :user_id)
+                ");
+                $filesStmt->bindValue(':pid', $pid, PDO::PARAM_INT);
+                $filesStmt->bindValue(':company_id', $company_id, PDO::PARAM_INT);
+                $filesStmt->bindValue(':type_id', 16, PDO::PARAM_INT);
+                $filesStmt->bindValue(':path', 'purchase_confirmations');
+                $filesStmt->bindValue(':filename', basename($fileKey));
+                $filesStmt->bindValue(':description', $fileName);
+                $filesStmt->bindValue(':added', $uploadedAt, PDO::PARAM_INT);
+                $filesStmt->bindValue(':user_id', $_SESSION['session_user_id'], PDO::PARAM_INT);
+                $filesStmt->execute();
+            } catch (Throwable $e) {
+                error_log("Could not save purchase confirmation file reference for PO {$pid}: " . $e->getMessage());
+            }
         }
     }
 

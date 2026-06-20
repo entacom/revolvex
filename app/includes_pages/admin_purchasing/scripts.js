@@ -647,7 +647,13 @@ function ProcessPurchaseSaveConfirmation() {
             alert((response && response.message) ? response.message : 'Could not save confirmation.');
         },
         error: function(xhr) {
-            alert(xhr.responseText || 'Could not save confirmation.');
+            let message = 'Could not save confirmation.';
+            if (xhr.responseJSON && xhr.responseJSON.message) {
+                message = xhr.responseJSON.message;
+            } else if (xhr.responseText) {
+                message = xhr.responseText;
+            }
+            alert(message);
         }
     });
 }
