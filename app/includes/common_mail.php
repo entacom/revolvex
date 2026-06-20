@@ -20,25 +20,26 @@ require $_SERVER['DOCUMENT_ROOT'].'/assets/vendor/php-mailer/src/SMTP.php';
  */
 function newSystemMailer(string $fromName, ?string $replyToEmail = null): PHPMailer {
     $mail = new PHPMailer(true);
+    $smtp = getSystemSmtpConfig();
 
-    // ---- cPanel SMTP (system@revolvex.com.au) ----
+    // ---- cPanel SMTP ----
     $mail->isSMTP();
-    $mail->Host       = 'mail.revolvex.com.au';
+    $mail->Host       = $smtp['host'];
     $mail->SMTPAuth   = true;
-    $mail->Username   = 'system@revolvex.com.au';
-    $mail->Password   = '.XHeG2),vp]U';
+    $mail->Username   = $smtp['username'];
+    $mail->Password   = $smtp['password'];
     $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS; // STARTTLS on 587
-    $mail->Port       = 587;
+    $mail->Port       = $smtp['port'];
 
     // Encoding / charset
     $mail->CharSet    = 'UTF-8';
     $mail->Encoding   = 'base64';
 
     // From / identity
-    $mail->setFrom('system@revolvex.com.au', $fromName);
+    $mail->setFrom($smtp['from'], $fromName);
 
     // Envelope sender / Return-Path (ensure this mailbox/alias exists or forwards)
-    $mail->Sender = 'bounces@revolvex.com.au';
+    $mail->Sender = $smtp['bounce'];
 
     // Reply-To (optional)
     if (!empty($replyToEmail)) {
@@ -50,6 +51,36 @@ function newSystemMailer(string $fromName, ?string $replyToEmail = null): PHPMai
 
 
     return $mail;
+}
+
+function getSystemSmtpConfig(): array {
+    $host = defined('SMTP_HOST') ? SMTP_HOST : 'mail.revolvex.com.au';
+    $port = defined('SMTP_PORT') ? (int)SMTP_PORT : 587;
+    $username = defined('SMTP_USERNAME') ? SMTP_USERNAME : '';
+    $password = defined('SMTP_PASSWORD') ? SMTP_PASSWORD : '';
+    $from = defined('SMTP_FROM') ? SMTP_FROM : $username;
+    $bounce = defined('SMTP_BOUNCE') ? SMTP_BOUNCE : $from;
+
+    if (($username === '' || $password === '') && !empty($_SESSION['session_company_id'])) {
+        $company_id = $_SESSION['session_company_id'];
+        $username = $username !== '' ? $username : (string)getTableField('smtp_username', 'tblCompany', $company_id);
+        $password = $password !== '' ? $password : (string)getTableField('smtp_password', 'tblCompany', $company_id);
+        $from = $from !== '' ? $from : $username;
+        $bounce = $bounce !== '' ? $bounce : $from;
+    }
+
+    if ($username === '' || $password === '') {
+        throw new Exception('System SMTP credentials are not configured.');
+    }
+
+    return array(
+        'host' => $host,
+        'port' => $port,
+        'username' => $username,
+        'password' => $password,
+        'from' => $from,
+        'bounce' => $bounce
+    );
 }
 
 /* =========================
@@ -349,18 +380,8 @@ function sendSalesOrderEmailxx($order_id, $pdfPath, $email_to1, $email_to2 = nul
 
     $completeEmailContent = $header . $emailContent . $footer;
 
-    $mail = new PHPMailer(true);
     try {
-        $mail->isSMTP();
-        $mail->Host = 'mail.revolvex.com.au';
-        $mail->SMTPAuth = true;
-        $mail->Username = 'system@revolvex.com.au';
-        $mail->Password = '.XHeG2),vp]U';
-        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-        $mail->Port = 587;
-
-        $mail->setFrom('system@revolvex.com.au', $company_name);
-        $mail->addReplyTo('system@revolvex.com.au', $company_name);
+        $mail = newSystemMailer($company_name, $email_from);
 
         $mail->addAddress($email_extra);
         $mail->addAddress($email_to1);
