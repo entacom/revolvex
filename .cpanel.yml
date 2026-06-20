@@ -1,0 +1,5 @@
+---
+deployment:
+  tasks:
+    - export DEPLOYPATH=/home/revolvexcom/public_html/
+    - /bin/rsync -av --exclude=".git" --exclude=".cpanel.yml" --exclude="_notes" --exclude="*/_notes" --exclude="files/" --exclude="web_config_ft.php" /home/revolvexcom/revolvex/app/ $DEPLOYPATH
