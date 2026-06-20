@@ -367,7 +367,6 @@ function getAppDocumentTitle() {
         'admin_purchase_status' => 'Purchase Status',
         'admin_item_groups' => 'Item Groups',
         'admin_item_units' => 'Item Units',
-        'admin_myob_connect' => 'MYOB',
         'admin_xero_connect' => 'Xero',
         'admin_users_profile' => 'Profile',
         'super_admin_profile' => 'Profile',

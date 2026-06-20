@@ -5,6 +5,9 @@ error_reporting(E_ALL);
 ini_set('display_errors', 'Off');
 
 $company_id = $_SESSION['session_company_id'];
+if (empty($_SESSION['xero_oauth_state'])) {
+    $_SESSION['xero_oauth_state'] = bin2hex(random_bytes(16));
+}
 
 $token_exists = getFieldColumn('access_token', 'tblAccounting', 'company_id', $company_id);
 $token_expire = getFieldColumn('access_token_expire', 'tblAccounting', 'company_id', $company_id);
@@ -46,12 +49,13 @@ while ($row = $result->fetch(PDO::FETCH_ASSOC)) {
                     <h5><b>If you have a Token Missing or Error</b></h5>
                     <ol>
                         <li class="active">
-                            <a href="<?php echo XERO_AUTHORIZE_URL; ?>?response_type=code&client_id=<?php echo XERO_CLIENT_ID; ?>&redirect_uri=<?php echo urlencode(XERO_REDIRECT_URI); ?>&scope=offline_access accounting.transactions accounting.contacts accounting.settings" target="_self">
+                            <a href="<?php echo XERO_AUTHORIZE_URL; ?>?response_type=code&client_id=<?php echo XERO_CLIENT_ID; ?>&redirect_uri=<?php echo urlencode(XERO_REDIRECT_URI); ?>&scope=offline_access accounting.transactions accounting.contacts accounting.settings&state=<?php echo urlencode($_SESSION['xero_oauth_state']); ?>" target="_self">
                                 Step 1: Click here to generate a new access code & allow access when prompted.
                             </a>
                         </li>
                         <div class="mb-3">
-                            <input type="text" name="code_text" disabled id="code_text" value="<?php echo isset($_GET['code']) ? $_GET['code'] : ''; ?>" class="form-control" />
+                            <input type="text" name="code_text" disabled id="code_text" value="<?php echo isset($_GET['code']) ? htmlspecialchars($_GET['code'], ENT_QUOTES, 'UTF-8') : ''; ?>" class="form-control" />
+                            <input type="hidden" id="xero_state" value="<?php echo isset($_GET['state']) ? htmlspecialchars($_GET['state'], ENT_QUOTES, 'UTF-8') : ''; ?>">
                         </div>
                         <li class="active">
                             <button id="generate-tokens" class="btn btn-secondary">Step 2: Click here to generate new access and refresh tokens</button>
@@ -70,16 +74,16 @@ while ($row = $result->fetch(PDO::FETCH_ASSOC)) {
             var code = $('#code_text').val();
             $.ajax({
                 url: 'includes_pages/admin_accounting/xero_functions.php',
-                method: 'GET',
+                method: 'POST',
                 data: {
                     get_new_access_token: true,
-                    code: code
+                    code: code,
+                    state: $('#xero_state').val()
                 },
                 success: function(response) {
                     $('#ajax-response').html(response);
-                    if (response.includes('access_token')) {
+                    if (response.includes('Tokens updated successfully')) {
                         $('.btn.btn-danger').removeClass('btn-danger').addClass('btn-success').text('XERO API Connection Token Ok');
-                        $('#ajax-response').append('<div class="alert alert-success mt-3">Tokens updated successfully.</div>');
                     }
                 },
                 error: function(xhr, status, error) {

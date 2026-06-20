@@ -238,5 +238,4 @@ if (isset($_GET['s'])) {
 } else {
     $pdf->Output('invoice.pdf', 'I'); // Output to browser if 's' is not set
 }
-UpdatePurStatus($_GET['pid'],2);
 ?>

@@ -1,6 +1,6 @@
 var crud_url ='includes_pages/admin_company/crud.php';
 function Loadtab(tab_id) {
-	
+
     $.ajax({
         type: "POST",
         url: "includes_pages/admin_company/content.php",
@@ -8,7 +8,7 @@ function Loadtab(tab_id) {
         success: function (response) {
            console.log("LoadTab:" +tab_id) // Display the returned data in the '#jobs_tab_body' element
             $('#tab_body').html(response);
-				
+
 
             $('#success_message').text("Data received successfully");
             $('#site_message').removeClass('alert alert-danger');
@@ -21,7 +21,7 @@ function Loadtab(tab_id) {
             if(tab_id=='banking'){
                GetBanking()
 			}
-  
+
         },
         error: function (xhr, status, error) {
             // Handle error response
@@ -30,7 +30,7 @@ function Loadtab(tab_id) {
             $('#site_message').text(errorMessage);
             $('#site_message').addClass('alert alert-danger');
         }
-	
+
     });
 
 }
@@ -77,7 +77,7 @@ function RevokeUser() {
 }
 function SaveProfile() {
     var formData = {
-		action: 'update_profile', 
+		action: 'update_profile',
         company_address: $("#company_address").val(),
         company_suburb: $("#company_suburb").val(),
         company_state: $("#company_state").val(),
@@ -93,7 +93,7 @@ function SaveProfile() {
 }
 function SaveBank() {
     var formData = {
-		action: 'update_bank', 
+		action: 'update_bank',
         bank_account_name: $("#bank_account_name").val(),
         bank_name: $("#bank_name").val(),
         bank_branch: $("#bank_branch").val(),
@@ -104,21 +104,21 @@ function SaveBank() {
 }
 function SaveAccounting() {
     var formData = {
-		action: 'update_accounting', 
+		action: 'update_accounting',
         payable_account_name: $("#payable_account_name").val(),
          payable_account_tax: $("#payable_account_tax").val(),
          payable_account_tax_code: $("#payable_account_tax_code").val(),
         receivable_account_name: $("#receivable_account_name").val(),
         payable_account_code: $("#payable_account_code").val(),
         receivable_account_code: $("#receivable_account_code").val(),
-        
+
         receivable_account_tax: $("#receivable_account_tax").val(),
         receivable_account_tax_code: $("#receivable_account_tax_code").val(),
-        
+
         cash_sale_customer: $("#customer_search").val(),
         cash_sale_uid: $("#customer_uid").val(),
     };
-	    ajaxPostRequest(formData, crud_url); 
+	    ajaxPostRequest(formData, crud_url);
 }
 function GetCompanyId() {
     var formData = {
@@ -126,7 +126,7 @@ function GetCompanyId() {
     };
     var jsonData = JSON.stringify(formData);
     console.log(jsonData);
-    
+
     $.ajax({
         url: crud_url,
         type: 'POST',
@@ -166,7 +166,7 @@ function GetCompanyId() {
             $("#company_email_text").text(data.company_email);
             $("#company_image").attr("src", data.company_image_path);
             $("#domain_name_user").val(data.domain_name);
-            
+
 
         },
         error: function(xhr, status, error) {
@@ -180,7 +180,7 @@ function GetAccounting() {
     };
     var jsonData = JSON.stringify(formData);
     console.log(jsonData);
-    
+
     $.ajax({
         url: crud_url,
         type: 'POST',
@@ -189,20 +189,18 @@ function GetAccounting() {
         success: function(response) {
             var data = response[0];
             // Accounting script loading
-            if (data.accounting_script === 'myob') {
-                loadScript('/includes_pages/admin_accounting/myob_functions.js');
-            } else if (data.accounting_script === 'xero') {
+            if (data.accounting_script === 'xero') {
                 loadScript('/includes_pages/admin_accounting/xero_functions.js');
             }
             $("#payable_account_name").val(data.payable_account_name);
             $("#payable_account_code").val(data.payable_account_code);
-            
+
             $("#payable_account_tax").val(data.payable_account_tax);
             $("#payable_account_tax_code").val(data.payable_account_tax_code);
-            
+
             $("#receivable_account_name").val(data.receivable_account_name);
             $("#receivable_account_code").val(data.receivable_account_code); // Set the UID in the dropdown
-            
+
             $("#receivable_account_tax").val(data.receivable_account_tax);
             $("#receivable_account_tax_code").val(data.receivable_account_tax_code); // Set the UID in the dropdown
 
@@ -221,7 +219,7 @@ function GetBanking() {
     };
     var jsonData = JSON.stringify(formData);
     console.log(jsonData);
-    
+
     $.ajax({
         url: crud_url,
         type: 'POST',
@@ -266,16 +264,16 @@ function editUser(user_id) {
                 $("#mobile").val(data.mobile);
                 $("#job_position").val(data.job_position);
                 $("#timezone").val(data.timezone);
-            
+
                 $("#security_group_id").val(data.security_group_id);
                 populateDropdown('#security_group', data.security_group, 'get_access_levels', 'id', 'user_group');
                  $('#security_group').change(function() {
                     var selectedSecGroupValue = $(this).val();
                     $('#security_group_id').val(selectedSecGroupValue);
                 });
-            
-            
-                
+
+
+
                 // Update text fields
                 $("#username_text").text(data.username);
                 $("#email_text").text(data.email);
@@ -312,7 +310,7 @@ function editClientAccessModal(id) {
 
 function AddUser() {
     var formData = {
-        'action': 'add_user', 
+        'action': 'add_user',
         firstname: $("#new_firstname").val(),
         lastname: $("#new_lastname").val(),
         username: $("#new_username").val(),
@@ -339,7 +337,7 @@ function AddUser() {
                 Loadtab('users_list');
                 // Call EmailNotifyUserAdded with the new user ID
                 EmailNotifyUserAdded(parsedResponse.newUserId,parsedResponse.tempPassword);
-				
+
             } else {
                 // Handle the error case
                 handleError(null, null, parsedResponse.message);
@@ -368,7 +366,7 @@ function EmailNotifyUserAdded(userId,TempPass) {
 
 function SaveUser() {
     var formData = {
-		'action': 'update_user', 
+		'action': 'update_user',
 		'user_id': $('#edit_user_id').val(),
 		'first_lastname': $('#first_lastname').val(),
 		'email': $('#email').val(),
@@ -394,7 +392,7 @@ function changePassword() {
         passwordMessage.textContent = ""; // Clear previous messages
 
 	 var formData = {
-		'action': 'update_user_password', 
+		'action': 'update_user_password',
 		'user_id': $('#edit_user_id').val(),
 		'newPassword1':newPassword1,
 
@@ -407,7 +405,7 @@ function changePassword() {
             data: jsonData,
         	contentType: "application/json",
             success: function (response) {
-			$('#userProfileModal').modal('hide')	 
+			$('#userProfileModal').modal('hide')
              handleSuccess(response);
 				},
 			error: function (xhr, status, error) {
@@ -444,4 +442,4 @@ $(document).ready(function() {
 
 
 
-	
+

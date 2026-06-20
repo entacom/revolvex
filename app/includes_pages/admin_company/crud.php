@@ -18,9 +18,7 @@ if (isset($data_raw['action']) && $data_raw['action'] == 'read_company_profile')
     $result->execute();
     while ($row = $result->fetch(PDO::FETCH_ASSOC)) {
         $accounting_script = '';
-        if (getFieldColumn('myob_option', 'tblAccounting', 'company_id', $_SESSION['session_company_id'])) {
-            $accounting_script = 'myob';
-        } elseif (getFieldColumn('xero_option', 'tblAccounting', 'company_id', $_SESSION['session_company_id'])) {
+        if (getFieldColumn('xero_option', 'tblAccounting', 'company_id', $_SESSION['session_company_id'])) {
             $accounting_script = 'xero';
         }
         $row_data = array(

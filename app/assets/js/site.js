@@ -34,10 +34,7 @@ function checkAccountingType() {
         contentType: "application/json",
         success: function(response) {
             var data = response[0];
-            if (data.accounting_script === 'myob') {
-                 console.log('myob functions loaded.');
-                loadScript('/includes_pages/admin_accounting/myob_functions.js');
-            } else if (data.accounting_script === 'xero') {
+            if (data.accounting_script === 'xero') {
                  console.log('Xero functions loaded.');
                 loadScript('/includes_pages/admin_accounting/xero_functions.js');
             }
@@ -59,7 +56,6 @@ function getUrlVars() {
 function redirectTo(page_url) {
     window.location.href = '?'+ page_url;
      }
-//onclick="redirectTo(\'p=admin_myob_connect\')"
 function redirectToJob(order_id) {
     window.open('?p=admin_orders&order_id=' + order_id, '_blank');
 }

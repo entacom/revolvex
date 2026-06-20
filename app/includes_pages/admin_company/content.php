@@ -253,8 +253,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['tab_id']) && $_POST['t
         if($data['xero_option']){
             $accounting_type="XERO";
             }
-        else if($data['myob_option']){
-        $accounting_type="MYOB";
+        else {
+            $accounting_type="Not connected";
         }
 
         $output = '<section class="section profile">
@@ -267,7 +267,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['tab_id']) && $_POST['t
                                 <div class="d-flex justify-content-between align-items-center mb-3">
                                     <h5 class="card-title mb-0">Accounting & Connection</h5>
                                     <div>
-                                        <button type="submit" class="btn btn-secondary" onclick="redirectTo(\'p=admin_myob_connect\')">Setup MYOB</button>
                                         <button type="submit" class="btn btn-secondary" onclick="redirectTo(\'p=admin_xero_connect\')">Setup XERO</button>
                                     </div>
                                 </div>

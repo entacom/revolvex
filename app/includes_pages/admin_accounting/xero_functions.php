@@ -5,6 +5,23 @@ require_once '/home/revolvexcom/web_config_ft.php';
 
 $company_id = $_SESSION['session_company_id'];
 
+function requireXeroPostAction($actions) {
+    foreach ($actions as $action) {
+        if (isset($_GET[$action]) && $_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405);
+            header('Content-Type: application/json');
+            echo json_encode(array('error' => 'POST required.'));
+            exit;
+        }
+    }
+}
+
+requireXeroPostAction(array(
+    'create_invoice',
+    'create_xero_bill',
+    'run_invoice_due_date_update'
+));
+
 // Refresh token if expired or missing
 $access_token_expire = getFieldColumn('access_token_expire', 'tblAccounting', 'company_id', $company_id);
 $access_token = getFieldColumn('access_token', 'tblAccounting', 'company_id', $company_id);
@@ -15,8 +32,14 @@ if ((int)$access_token_expire - time() < 100 || empty($access_token)) {
     sleep(1);
 }
 
-if (isset($_GET['get_new_access_token'])) {
-    $code = $_GET['code'];
+if (isset($_POST['get_new_access_token'])) {
+    if (empty($_POST['state']) || empty($_SESSION['xero_oauth_state']) || !hash_equals($_SESSION['xero_oauth_state'], $_POST['state'])) {
+        http_response_code(403);
+        echo '<div class="alert alert-danger">Xero state validation failed. Start the connection again.</div>';
+        exit;
+    }
+
+    $code = $_POST['code'];
     $ch = curl_init();
 
     curl_setopt_array($ch, array(
@@ -37,19 +60,18 @@ if (isset($_GET['get_new_access_token'])) {
     curl_close($ch);
 
     $tokenData = json_decode($response, true);
-    echo "<pre>";
-    print_r($tokenData);
-    echo "</pre>";
 
     if (isset($tokenData['access_token']) && isset($tokenData['refresh_token'])) {
         $tenantId = getXeroTenantId($tokenData['access_token']);
         if ($tenantId) {
             updateXeroAccessToken($tokenData['access_token'], $tokenData['refresh_token'], $tenantId, $tokenData['expires_in']);
+            unset($_SESSION['xero_oauth_state']);
+            echo '<div class="alert alert-success mt-3">Tokens updated successfully.</div>';
         } else {
-            echo "Failed to retrieve Xero tenant ID.";
+            echo '<div class="alert alert-danger">Failed to retrieve Xero tenant ID.</div>';
         }
     } else {
-        echo "Error retrieving tokens.";
+        echo '<div class="alert alert-danger">Error retrieving tokens.</div>';
     }
 }
 

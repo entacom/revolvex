@@ -4,12 +4,17 @@ error_reporting(E_ALL);
 ini_set('display_errors', 'Off');
 include("../../includes/common.php");
 $company_id=1;
-if (isset($_GET['read_company_profile'])) {
-	    if (!isset($_SESSION['csrf_token']) || !verifyCsrfToken($_SESSION['csrf_token'])) {
-        http_response_code(403); // Return a forbidden status code if token is invalid
-        echo "CSRF token validation failed!";
+$action = isset($_POST['action']) ? $_POST['action'] : '';
+
+function requireProfileCsrf() {
+    if (!isset($_POST['csrf_token']) || !isset($_SESSION['csrf_token']) || !verifyCsrfToken($_POST['csrf_token'])) {
+        http_response_code(403);
+        echo json_encode(array('error' => 'CSRF token validation failed'));
         exit();
     }
+}
+
+if ($action == 'read_company_profile') {
     $database = new Database();
     $conn = $database->connect();
     $return_arr = array();
@@ -50,7 +55,8 @@ if (isset($_GET['read_company_profile'])) {
     echo json_encode($return_arr);
     $conn = null;
 }
-if (isset($_GET['update_profile'])) {
+if ($action == 'update_profile') {
+    requireProfileCsrf();
     $database = new Database();
     $conn = $database->connect();
     $query = "UPDATE tblCompany 
@@ -108,13 +114,8 @@ if (isset($_GET['update_profile'])) {
 	$conn = null;
 
 }
-if (isset($_GET['add_user'])) {
-    if (!isset($_SESSION['csrf_token']) || !verifyCsrfToken($_SESSION['csrf_token'])) {
-        http_response_code(403); // Return a forbidden status code if token is invalid
-        echo "CSRF token validation failed!";
-        exit();
-    }
-
+if ($action == 'add_user') {
+    requireProfileCsrf();
     $username = $_POST['username'] . '@' . $_POST['domain_name_user'];
 
     // Check if the username already exists
@@ -171,13 +172,8 @@ if (isset($_GET['add_user'])) {
 }
 
 
-if (isset($_GET['update_user'])) {
-    // Validate CSRF token
-    if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
-        // Invalid CSRF token, handle error (e.g., return an error response or redirect)
-        echo json_encode(['error' => 'CSRF token validation failed']);
-        exit;
-    }
+if ($action == 'update_user') {
+    requireProfileCsrf();
     $database = new Database();
     $conn = $database->connect();
     $query = "UPDATE tblUsers 
@@ -207,7 +203,8 @@ if (isset($_GET['update_user'])) {
     $conn = null;
 }
 
-if (isset($_GET['update_user_password'])) {
+if ($action == 'update_user_password') {
+    requireProfileCsrf();
 
     // Validate and sanitize input data
     $newPassword = $_POST['newPassword1']; // Assuming newPassword1 is the name attribute of the input field for the new password
@@ -239,13 +236,8 @@ if (isset($_GET['update_user_password'])) {
 
 
 
-if (isset($_GET['delete_user'])) {
-    // Validate CSRF token
-    if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
-        // Invalid CSRF token, handle error (e.g., return an error response or redirect)
-        echo json_encode(['error' => 'CSRF token validation failed']);
-        exit;
-    }
+if ($action == 'delete_user') {
+    requireProfileCsrf();
     $database = new Database();
     $conn = $database->connect();
     $query = "DELETE FROM tblUsers WHERE id = :user_id";
@@ -265,7 +257,8 @@ if (isset($_GET['delete_user'])) {
 
 
 
-if (isset($_GET['read_user_profile'])) {
+if ($action == 'read_user_profile') {
+    requireProfileCsrf();
     $database = new Database();
     $conn = $database->connect();
     $return_arr = array();

@@ -6,7 +6,7 @@ function Loadtab(tab_id) {
         success: function (response) {
             // Display the returned data in the '#jobs_tab_body' element
             $('#tab_body').html(response);
-				
+
 
             $('#success_message').text("Data received successfully");
             $('#site_message').removeClass('alert alert-danger');
@@ -20,15 +20,15 @@ function Loadtab(tab_id) {
             $('#site_message').text(errorMessage);
             $('#site_message').addClass('alert alert-danger');
         }
-	
+
     });
 
 }
 function GetCompanyId() {
     $.ajax({
-        url: 'includes_pages/super_admin_profile/crud.php?read_company_profile',
+        url: 'includes_pages/super_admin_profile/crud.php',
         type: 'POST',
-        data: { },
+        data: { action: 'read_company_profile' },
         dataType: 'json',
         success: function(data, status) {
             $.each(data, function(index, data) {
@@ -62,7 +62,7 @@ function GetCompanyId() {
 				$("#company_phone_text").text(data.company_phone);
 				$("#company_email_text").text(data.company_email);
 				$("#company_image").attr("src", data.company_image_path)
-				
+
 				$("#domain_name_user").val(data.domain_name);
 
             });
@@ -74,7 +74,8 @@ function GetCompanyId() {
     });
 }
 function SaveProfile() {
-    var url = 'includes_pages/super_admin_profile/crud.php?update_profile'; 
+    var url = 'includes_pages/super_admin_profile/crud.php';
+    var csrf_token = $('#csrf_token').val();
     var company_name = $("#company_name").val();
 	var company_address = $("#company_address").val();
     var company_suburb = $("#company_suburb").val();
@@ -97,6 +98,8 @@ function SaveProfile() {
 
     var postData = {
 
+		action: 'update_profile',
+        csrf_token: csrf_token,
 		company_name: company_name,
         company_address: company_address,
         company_suburb: company_suburb,
@@ -137,8 +140,9 @@ function SaveProfile() {
 
 function GetSubscriber() {
     var csrf_token = $('#csrf_token').val(); // Retrieve CSRF token from the input field
-    var url = 'includes_pages/super_admin_profile/crud.php?read_company_profile';
+    var url = 'includes_pages/super_admin_profile/crud.php';
     var postData = {
+        action: 'read_company_profile',
 		csrf_token: csrf_token
     };
     $.ajax({
@@ -167,7 +171,7 @@ function GetSubscriber() {
 				$("#bank_branch").val(data.bank_branch);
 				$("#bank_bsb").val(data.bank_bsb);
 				$("#bank_account").val(data.bank_account);
-				
+
 				$("#subscription_plan").val(data.subscription_plan);
 				$("#subscription_amount").val(data.subscription_amount+ ' Excluding Tax');
 				$("#subscription_renew").val(data.subscription_renew);
@@ -179,7 +183,7 @@ function GetSubscriber() {
 				$("#company_phone_text").text(data.company_phone);
 				$("#company_email_text").text(data.company_email);
 				$("#company_image").attr("src", data.company_image_path)
-				
+
 				$("#domain_name_user").val(data.domain_name);
 
             });
@@ -232,18 +236,18 @@ function editUser(user_id) {
 				$("#mobile").val(data.mobile);
 				$("#job_position").val(data.job_position);
 				$("#timezone").val(data.timezone);
-				
+
 				$("#username_text").text(data.username);
 				$("#email_text").text(data.email);
 				$("#mobile_text").text(data.mobile);
 				$("#fullname_text").text(data.firstname+' '+data.lastname);
 				$("#job_position_text").text(data.job_position);
-				
+
 				$("#user_image").attr("src", data.user_image_path)
 				$('#ExtralargeModal').modal('show')
             });
-			
-			
+
+
         },
         error: function(xhr, status, error) {
             // Handle error if any
@@ -264,7 +268,7 @@ function AddUser() {
     var mobile = $("#new_mobile").val();
     var job_position = $("#new_job_position").val();
     var timezone = $("#new_timezone").val();
-	
+
 	if (
         firstname === '' ||
         lastname === '' ||
@@ -280,7 +284,7 @@ function AddUser() {
 		} else {
 			$("#fieldsError").addClass('d-none');
 		}
-	
+
     var postData = {
         csrf_token: csrf_token,
         firstname: firstname,
@@ -292,7 +296,7 @@ function AddUser() {
         job_position: job_position,
         timezone: timezone
     };
-    
+
     $.ajax({
         url: url,
         type: 'POST',
@@ -311,7 +315,7 @@ function AddUser() {
         error: function(xhr, status, error) {
             console.error('Error occurred while saving profile:', error);
             console.log('XHR Response:', xhr.responseText); // Log the response text for further analysis
-            
+
             // Handle other error scenarios here
             // You can decide whether to close the modal or not
             // For example, you might want to close the modal for all other errors
@@ -395,11 +399,11 @@ function changePassword() {
 }
 
 $(document).ready(function() {
- 
+
 	Loadtab('company')
-	
+
 });
 
 
 
-	
+
