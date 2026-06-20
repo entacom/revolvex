@@ -553,13 +553,16 @@ if ($sub_tab_id == 'purchase_activity') {
     $data .= '</div>';
 
     if (!empty($purchaseFiles)) {
-        $data .= '<div class="mt-4"><h6 class="mb-2">Saved PO Files</h6><div class="list-group">';
+        $data .= '<div class="purchase-files-panel mt-4">';
+        $data .= '<div class="purchase-files-header"><div><div class="purchase-files-eyebrow">Documents</div><h6 class="mb-0">Saved PO Files</h6></div><span class="purchase-files-count">' . count($purchaseFiles) . '</span></div>';
+        $data .= '<div class="purchase-files-list">';
         foreach ($purchaseFiles as $file) {
             $fileFolder = (!empty($file['path']) && $file['path'] !== 'aws_S3_bucket') ? trim($file['path'], '/') : 'purchase_files';
             $downloadUrl = generatePreSignedUrl($fileFolder . '/' . $file['filename'], $file['description']);
-            $data .= '<a class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" target="_blank" href="' . htmlspecialchars($downloadUrl, ENT_QUOTES, 'UTF-8') . '">';
-            $data .= '<span>' . htmlspecialchars($file['description']) . '</span>';
-            $data .= '<span class="small text-muted">' . (!empty($file['added']) ? date_c($file['added']) : '') . '</span>';
+            $data .= '<a class="purchase-file-link" target="_blank" href="' . htmlspecialchars($downloadUrl, ENT_QUOTES, 'UTF-8') . '">';
+            $data .= '<span class="purchase-file-icon"><i class="bi bi-file-earmark-text"></i></span>';
+            $data .= '<span class="purchase-file-main"><span class="purchase-file-name">' . htmlspecialchars($file['description']) . '</span><span class="purchase-file-meta">' . (!empty($file['added']) ? 'Saved ' . date_c($file['added']) : 'Saved file') . '</span></span>';
+            $data .= '<span class="purchase-file-open">Open file <i class="bi bi-box-arrow-up-right"></i></span>';
             $data .= '</a>';
         }
         $data .= '</div></div>';

@@ -470,6 +470,18 @@ function OpenProcessPurchaseModal(processPid) {
     $('#ProcessPurchaseModal').modal('show');
 }
 
+function escapeHtml(value) {
+    return String(value || '').replace(/[&<>"']/g, function(match) {
+        return {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        }[match];
+    });
+}
+
 function renderProcessPurchaseActivity(history) {
     const labels = purchaseProcessLabels();
     const meta = history && history.meta ? history.meta : {};
@@ -490,7 +502,17 @@ function renderProcessPurchaseActivity(history) {
         .text('Confirmation has not been received within 48 hours.' + dueText);
     if (history && history.meta) {
         $('#purchase_confirmation_eta').val(meta.estimated_arrival_date_input || '');
-        $('#purchase_confirmation_file_summary').text(meta.confirmation_file_name ? 'Uploaded: ' + meta.confirmation_file_name : '');
+        if (meta.confirmation_file_name && meta.confirmation_file_url) {
+            $('#purchase_confirmation_file_summary').html(
+                '<a class="purchase-confirmation-link" target="_blank" href="' + escapeHtml(meta.confirmation_file_url) + '">' +
+                    '<i class="bi bi-file-earmark-text"></i>' +
+                    '<span class="purchase-confirmation-link-text">' + escapeHtml(meta.confirmation_file_name) + '</span>' +
+                    '<span class="purchase-confirmation-link-action">Open confirmation <i class="bi bi-box-arrow-up-right"></i></span>' +
+                '</a>'
+            );
+        } else {
+            $('#purchase_confirmation_file_summary').text(meta.confirmation_file_name ? 'Uploaded: ' + meta.confirmation_file_name : '');
+        }
     }
 
     $('[data-purchase-process-summary]').each(function() {

@@ -689,6 +689,135 @@
     background: var(--left-nav-color);
 }
 
+.purchase-files-panel {
+    background: linear-gradient(135deg, #eef7ff 0%, #ffffff 100%);
+    border: 1px solid #b8d8f4;
+    border-left: 4px solid #1f75cb;
+    border-radius: 8px;
+    padding: 0.9rem;
+    box-shadow: 0 12px 28px rgba(31, 84, 140, 0.12);
+}
+
+.purchase-files-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
+}
+
+.purchase-files-eyebrow {
+    color: #1f75cb;
+    font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: 0;
+    text-transform: uppercase;
+}
+
+.purchase-files-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2rem;
+    height: 2rem;
+    border-radius: 999px;
+    background: #1f75cb;
+    color: #fff;
+    font-size: 0.85rem;
+    font-weight: 800;
+}
+
+.purchase-files-list {
+    display: grid;
+    gap: 0.55rem;
+}
+
+.purchase-file-link,
+.purchase-confirmation-link {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.75rem;
+    border: 1px solid #cfe2f4;
+    border-radius: 7px;
+    background: #fff;
+    color: #12324f;
+    text-decoration: none;
+    box-shadow: 0 6px 16px rgba(31, 84, 140, 0.08);
+    transition: background-color 140ms ease, border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+}
+
+.purchase-file-link {
+    padding: 0.75rem 0.85rem;
+}
+
+.purchase-confirmation-link {
+    margin-top: 0.35rem;
+    padding: 0.55rem 0.65rem;
+}
+
+.purchase-file-link:hover,
+.purchase-confirmation-link:hover {
+    background: #f3f9ff;
+    border-color: #1f75cb;
+    color: #0d4f8f;
+    box-shadow: 0 10px 22px rgba(31, 84, 140, 0.16);
+    transform: translateY(-1px);
+}
+
+.purchase-file-icon,
+.purchase-confirmation-link > i:first-child {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 7px;
+    background: #e5f2ff;
+    color: #1f75cb;
+    font-size: 1.15rem;
+}
+
+.purchase-file-main {
+    min-width: 0;
+}
+
+.purchase-file-name,
+.purchase-file-meta,
+.purchase-confirmation-link-text {
+    display: block;
+}
+
+.purchase-file-name,
+.purchase-confirmation-link-text {
+    overflow: hidden;
+    color: #102a43;
+    font-size: 0.92rem;
+    font-weight: 800;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.purchase-file-meta {
+    color: #60758d;
+    font-size: 0.76rem;
+    margin-top: 0.1rem;
+}
+
+.purchase-file-open,
+.purchase-confirmation-link-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.35rem 0.55rem;
+    border-radius: 6px;
+    background: #1f75cb;
+    color: #fff;
+    font-size: 0.78rem;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
 
 
 

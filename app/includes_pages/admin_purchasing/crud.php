@@ -191,7 +191,7 @@ function getPurchaseProcessActivity($conn, $pid, $company_id) {
 
     if (purchaseConfirmationColumnsExist($conn)) {
         $metaStmt = $conn->prepare("
-            SELECT order_confirmation_required, order_confirmation_received, estimated_arrival_date, confirmation_file_name
+            SELECT order_confirmation_required, order_confirmation_received, estimated_arrival_date, confirmation_file_key, confirmation_file_name
             FROM tblPurchaseOrders
             WHERE id = :pid
               AND company_id = :company_id
@@ -208,6 +208,7 @@ function getPurchaseProcessActivity($conn, $pid, $company_id) {
                 'confirmation_received' => (int)$meta['order_confirmation_received'],
                 'estimated_arrival_date_input' => !empty($meta['estimated_arrival_date']) ? date('Y-m-d', (int)$meta['estimated_arrival_date']) : '',
                 'confirmation_file_name' => $meta['confirmation_file_name'],
+                'confirmation_file_url' => !empty($meta['confirmation_file_key']) ? generatePreSignedUrl($meta['confirmation_file_key'], $meta['confirmation_file_name']) : '',
                 'confirmation_overdue' => false
             );
         }
