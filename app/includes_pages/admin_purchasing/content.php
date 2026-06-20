@@ -476,7 +476,24 @@ if ($sub_tab_id == 'order_invoice') {
                    </div></div>';
         sendJsonResponse(['html' => $output]);
     } else {
-        sendJsonResponse(['html' => '<div class="card-body"><h5 class="card-title">No Items Found</h5></div>']);
+        $output = '<div class="card">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-2 alert alert-warning p-1">
+                            <div>
+                                <h5 class="card-title mb-0">Purchase Order</h5>
+                            </div>
+                            <div class="ms-auto d-flex gap-2">
+                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="addOrderItemsModal()">Add Item to Purchase Order</button>
+                                <button type="button" class="btn btn-sm btn-success" onclick="OpenProcessPurchaseModal('.$_POST['pid'].')"><i class="bx bxs-factory"></i> Process Purchase</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="PrintPurchaseOrder('.$_POST['pid'].')">Print</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="PrintPurchaseDel('.$_POST['pid'].')">Print Delivery</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="EmailPurchaseOrder('.$_POST['pid'].')">Email</button>
+                            </div>
+                        </div>
+                        <h5 class="card-title">No Items Found</h5>
+                    </div>
+                   </div>';
+        sendJsonResponse(['html' => $output]);
     }
 }
 
