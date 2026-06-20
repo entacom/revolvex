@@ -89,6 +89,12 @@
                 <span>Purchases</span>
             </a>
         </li>
+        <li class="nav-item">
+            <a class="nav-link collapsed" href="?p=admin_dashboard">
+                <i class="bx bx-test-tube"></i>
+                <span>Test</span>
+            </a>
+        </li>
         <?php if (in_array($_SESSION['session_group_id'], [11, 12, 13])) { ?>
             <li class="nav-item">
                 <a class="nav-link collapsed" data-bs-target="#components-nav" data-bs-toggle="collapse" href="?p=admin_company">
