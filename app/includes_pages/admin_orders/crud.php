@@ -636,6 +636,24 @@ if (isset($data_raw['action']) && $data_raw['action'] === 'create_po_from_tagged
             throw new Exception('Source PO not found.');
         }
 
+        $orderStmt = $conn->prepare("
+            SELECT delivery_date
+            FROM tblOrders
+            WHERE order_id = :order_id
+            AND company_id = :company_id
+            LIMIT 1
+        ");
+        $orderStmt->bindValue(':order_id', $order_id, PDO::PARAM_INT);
+        $orderStmt->bindValue(':company_id', $company_id, PDO::PARAM_INT);
+        $orderStmt->execute();
+        $order = $orderStmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$order) {
+            throw new Exception('Order not found.');
+        }
+
+        $requiredDate = !empty($order['delivery_date']) ? (int)$order['delivery_date'] : null;
+
         $insertPO = $conn->prepare("
             INSERT INTO tblPurchaseOrders (
                 company_id,
@@ -679,7 +697,7 @@ if (isset($data_raw['action']) && $data_raw['action'] === 'create_po_from_tagged
                 :vendor_email,
                 '',
                 :order_date,
-                '',
+                :order_date_required,
                 '',
                 '',
                 '',
@@ -710,6 +728,7 @@ if (isset($data_raw['action']) && $data_raw['action'] === 'create_po_from_tagged
         $insertPO->bindValue(':vendor_phone', $src['vendor_phone']);
         $insertPO->bindValue(':vendor_email', $src['vendor_email']);
         $insertPO->bindValue(':order_date', time());
+        $insertPO->bindValue(':order_date_required', $requiredDate, $requiredDate === null ? PDO::PARAM_NULL : PDO::PARAM_INT);
         $insertPO->bindValue(':purchaser_user_id', $purchaser_user_id, PDO::PARAM_INT);
         $insertPO->bindValue(':order_notes', "Copied from customer order " . $order_id);
 
