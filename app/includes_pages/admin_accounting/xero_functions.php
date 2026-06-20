@@ -902,7 +902,7 @@ function createXeroBillPayload($pid) {
     curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode(['Invoices' => [$payload]]));
     curl_setopt($ch, CURLOPT_HTTPHEADER, [
-        "Authorization: Bearer YOUR_ACCESS_TOKEN_HERE",
+        "Authorization: Bearer <xero_access_token>",
         "Content-Type: application/json",
         "Accept: application/json"
     ]);

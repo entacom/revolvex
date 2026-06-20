@@ -259,6 +259,52 @@ function gitUpdateFindExtractedAppPath($extractPath) {
     return '';
 }
 
+function gitUpdateCleanProtectedPublicFiles($path, &$removedFiles, &$removedDirs) {
+    if (!is_dir($path)) {
+        return;
+    }
+
+    $items = scandir($path);
+    foreach ($items as $item) {
+        if ($item === '.' || $item === '..') {
+            continue;
+        }
+
+        $fullPath = $path . DIRECTORY_SEPARATOR . $item;
+        if (is_dir($fullPath) && !is_link($fullPath)) {
+            if ($item === '_notes') {
+                gitUpdateRemoveDirectory($fullPath);
+                $removedDirs++;
+                continue;
+            }
+
+            gitUpdateCleanProtectedPublicFiles($fullPath, $removedFiles, $removedDirs);
+            continue;
+        }
+
+        if (gitUpdateIsProtectedPublicFile($item) && @unlink($fullPath)) {
+            $removedFiles++;
+        }
+    }
+}
+
+function gitUpdateIsProtectedPublicFile($fileName) {
+    if (preg_match('/_orig\.php$/i', $fileName)) {
+        return true;
+    }
+
+    if (preg_match('/\.(log|sql|bak|backup|old|orig|p12|crt|key|pem|zip|tar|gz)$/i', $fileName)) {
+        return true;
+    }
+
+    return in_array(strtolower($fileName), array(
+        'info.php',
+        'test_autoload.php',
+        'first_test.php',
+        'web_config_ft.php'
+    ), true);
+}
+
 if ($action === 'status') {
     echo json_encode(gitUpdateStatusPayload($repoOwner, $repoName, $branch, $deployPath, $fallbackRepoPath, $deployLog));
     exit;
@@ -315,6 +361,12 @@ if ($action === 'deploy') {
 
         $copied = 0;
         $skipped = 0;
+        $removedFiles = 0;
+        $removedDirs = 0;
+        $outputParts[] = 'Cleaning protected legacy files from public_html.';
+        gitUpdateCleanProtectedPublicFiles($deployPath, $removedFiles, $removedDirs);
+        $outputParts[] = 'Removed protected files: ' . $removedFiles;
+        $outputParts[] = 'Removed _notes folders: ' . $removedDirs;
         $outputParts[] = 'Copying app folder to public_html.';
         gitUpdateCopyDirectory($appSource, $deployPath, $appSource, $copied, $skipped);
         $outputParts[] = 'Copied files: ' . $copied;

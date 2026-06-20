@@ -5,7 +5,7 @@ RewriteEngine On
 RewriteRule (^|/)_notes(/|$) - [F,L]
 </IfModule>
 
-<FilesMatch "(^json_data\.php$|^test_autoload\.php$|^first_test\.php$|^web_config.*\.php$|\.log$|\.sql$|\.bak$|\.backup$|\.old$|\.orig$|\.p12$|\.crt$|\.key$|\.pem$|\.zip$)">
+<FilesMatch "(^json_data\.php$|^test_autoload\.php$|^first_test\.php$|^info\.php$|^web_config.*\.php$|_orig\.php$|\.log$|\.sql$|\.bak$|\.backup$|\.old$|\.orig$|\.p12$|\.crt$|\.key$|\.pem$|\.zip$)">
 Require all denied
 </FilesMatch>
 

@@ -1194,8 +1194,9 @@ function getMaxField($field, $table, $company_id) {
     }
 }
 function checkSmsBalance() {
-    $username = 'entacom';           // Your username
-    $password = 'action94Builders';  // Your password
+    $sms = getSmsBroadcastConfig();
+    $username = $sms['username'];
+    $password = $sms['password'];
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, "https://api.smsbroadcast.com.au/api-adv.php?action=balance&username=" . urlencode($username) . "&password=" . urlencode($password));
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -1212,6 +1213,21 @@ function checkSmsBalance() {
     // Return the number part if it exists
     return isset($parts[1]) ? trim($parts[1]) : null;
 }
+function getSmsBroadcastConfig() {
+    $username = defined('SMSBROADCAST_USERNAME') ? SMSBROADCAST_USERNAME : '';
+    $password = defined('SMSBROADCAST_PASSWORD') ? SMSBROADCAST_PASSWORD : '';
+    $source = defined('SMSBROADCAST_SOURCE') ? SMSBROADCAST_SOURCE : 'ActionBuild';
+
+    if ($username === '' || $password === '') {
+        throw new RuntimeException('SMS Broadcast credentials are not configured.');
+    }
+
+    return array(
+        'username' => $username,
+        'password' => $password,
+        'source' => $source
+    );
+}
 function sendSMS($content) {
     $ch = curl_init('https://api.smsbroadcast.com.au/api.php');
     curl_setopt($ch, CURLOPT_POST, true);
@@ -1225,10 +1241,11 @@ function sendSMS($content) {
     return $output;    
 }
 function sendVerificationSMS($destination, $text) {
-    $username = 'entacom';
-    $password = 'action94Builders';
+    $sms = getSmsBroadcastConfig();
+    $username = $sms['username'];
+    $password = $sms['password'];
     $destination = $destination;
-    $source = 'ActionBuild';
+    $source = $sms['source'];
     $ref = 'abc123';
     $content =  'username='.rawurlencode($username).
                 '&password='.rawurlencode($password).
