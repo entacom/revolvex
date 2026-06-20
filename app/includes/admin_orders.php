@@ -488,6 +488,14 @@
                     </div>
                     <div class="list-group-item d-flex justify-content-between align-items-center gap-3">
                         <div>
+                            <div class="fw-bold">Production CSV Files</div>
+                            <div class="small text-muted">Save machine CSV files for manufactured items on this order.</div>
+                            <div class="small text-success process-activity-summary" data-workflow-summary="production_csv_saved"></div>
+                        </div>
+                        <button type="button" id="process_csv_button" class="btn btn-sm btn-outline-secondary" onclick="ProcessOrderSaveProductionCsvs()">Save</button>
+                    </div>
+                    <div class="list-group-item d-flex justify-content-between align-items-center gap-3">
+                        <div>
                             <div class="fw-bold">Labels</div>
                             <div class="small text-muted">Print order labels for packed items.</div>
                             <div class="small text-success process-activity-summary" data-workflow-summary="labels_dymo_printed"></div>

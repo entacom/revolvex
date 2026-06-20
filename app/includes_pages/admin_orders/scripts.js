@@ -582,19 +582,25 @@ $('#printOrder').html(
     });
 }
 
-function generateCSV(part_number,customer_contact) {
- 
-    $.ajax({
+function safeCsvFileText(value) {
+    return String(value || '')
+        .replace(/[^A-Za-z0-9._-]+/g, '_')
+        .replace(/^_+|_+$/g, '') || 'file';
+}
+
+function downloadCsvForPart(part_number, customer_contact, csvOrderId) {
+    var targetOrderId = csvOrderId || order_id;
+    return $.ajax({
         url: 'includes_pages/admin_orders/generate_csv.php', // The URL to your PHP script
         type: 'POST',
-        data: { part_number: part_number, order_id: order_id },
+        data: { part_number: part_number, order_id: targetOrderId },
         success: function(response) {
             // Create a link element, set its href to the blob URL, and trigger a click event to download the file
             var blob = new Blob([response], { type: 'text/csv' });
             var url = window.URL.createObjectURL(blob);
             var a = document.createElement('a');
             a.href = url;
-            a.download = order_id +'_' + part_number + '_'+customer_contact+'.csv';
+            a.download = safeCsvFileText(targetOrderId) + '_' + safeCsvFileText(part_number) + '_' + safeCsvFileText(customer_contact) + '.csv';
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -604,6 +610,10 @@ function generateCSV(part_number,customer_contact) {
             console.error('Error generating CSV:', error);
         }
     });
+}
+
+function generateCSV(part_number, customer_contact) {
+    downloadCsvForPart(part_number, customer_contact, order_id);
 }
 function copyContactSite() {
     var primary_contactValue = $('#customer_contact').val();
@@ -1392,6 +1402,7 @@ function processOrderActivityLabels() {
         order_confirmation_emailed: 'Email',
         order_confirmation_printed: 'Print',
         production_cards_printed: 'Print',
+        production_csv_saved: 'Save',
         labels_dymo_printed: 'Dymo',
         labels_zebra_printed: 'Zebra',
         delivery_docket_printed: 'Print',
@@ -1529,6 +1540,63 @@ function ProcessOrderPrintProductionCards() {
         loadProcessOrderActivity();
     });
     PrintProdCardAll(getProcessOrderId());
+}
+
+function ProcessOrderSaveProductionCsvs() {
+    var processOrderId = getProcessOrderId();
+
+    if (!processOrderId) {
+        alert('Missing order id.');
+        return;
+    }
+
+    $('#process_csv_button').prop('disabled', true).text('Saving...');
+
+    $.ajax({
+        url: crud_url,
+        type: 'POST',
+        data: JSON.stringify({
+            action: 'get_process_order_csv_parts',
+            order_id: processOrderId
+        }),
+        contentType: 'application/json',
+        dataType: 'json',
+        success: function(response) {
+            if (!response || !response.success) {
+                alert((response && response.message) ? response.message : 'Could not load production CSV items.');
+                return;
+            }
+
+            var parts = response.parts || [];
+            if (!parts.length) {
+                alert('No manufactured production items found for CSV export.');
+                return;
+            }
+
+            var customerContact = response.customer_contact || $('#customer_contact').val() || $('#customer_search').val() || 'customer';
+            var chain = $.Deferred().resolve().promise();
+
+            parts.forEach(function(partNumber) {
+                chain = chain.then(function() {
+                    return downloadCsvForPart(partNumber, customerContact, processOrderId);
+                });
+            });
+
+            chain.done(function() {
+                recordProcessOrderActivity('production_csv_saved', function() {
+                    loadProcessOrderActivity();
+                });
+            }).fail(function() {
+                alert('One or more production CSV files failed to save.');
+            }).always(function() {
+                $('#process_csv_button').prop('disabled', false).text('Save');
+            });
+        },
+        error: function(xhr) {
+            $('#process_csv_button').prop('disabled', false).text('Save');
+            alert(xhr.responseText || 'Could not load production CSV items.');
+        }
+    });
 }
 
 function ProcessOrderPrintLabels(labelType) {

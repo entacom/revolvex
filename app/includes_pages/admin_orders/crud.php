@@ -233,6 +233,7 @@ function processOrderWorkflowActions() {
         'order_confirmation_printed' => 'Printed: Order confirmation',
         'order_confirmation_emailed' => 'Email sent: Order confirmation',
         'production_cards_printed' => 'Printed: Production cards',
+        'production_csv_saved' => 'Saved: Production CSV files',
         'labels_dymo_printed' => 'Printed: Dymo labels',
         'labels_zebra_printed' => 'Printed: Zebra labels',
         'delivery_docket_printed' => 'Printed: Delivery docket',
@@ -246,6 +247,7 @@ function processOrderWorkflowAliases() {
         'order_confirmation_printed' => array('Printed: Order confirmation', 'Printed Order confirmation'),
         'order_confirmation_emailed' => array('Email sent: Order confirmation', 'Email sent Order confirmation'),
         'production_cards_printed' => array('Printed: Production cards', 'Printed Production cards'),
+        'production_csv_saved' => array('Saved: Production CSV files', 'Saved Production CSV files'),
         'labels_dymo_printed' => array('Printed: Dymo labels', 'Printed Dymo labels'),
         'labels_zebra_printed' => array('Printed: Zebra labels', 'Printed Zebra labels'),
         'delivery_docket_printed' => array('Printed: Delivery docket', 'Printed Delivery docket'),
@@ -522,6 +524,67 @@ if (isset($data_raw['action']) && $data_raw['action'] === 'get_process_order_act
     } catch (Exception $e) {
         error_log('get_process_order_activity error: ' . $e->getMessage());
         echo json_encode(['success' => false, 'message' => 'Server error while loading process activity.']);
+        exit;
+    }
+}
+
+if (isset($data_raw['action']) && $data_raw['action'] === 'get_process_order_csv_parts') {
+    header('Content-Type: application/json');
+
+    try {
+        $database = new Database();
+        $conn = $database->connect();
+        $company_id = (int)$_SESSION['session_company_id'];
+        $order_id = isset($data_raw['order_id']) ? (int)$data_raw['order_id'] : 0;
+
+        if ($order_id <= 0) {
+            echo json_encode(['success' => false, 'message' => 'Invalid order id.']);
+            exit;
+        }
+
+        $orderStmt = $conn->prepare("
+            SELECT order_id, customer_contact
+            FROM tblOrders
+            WHERE order_id = :order_id
+              AND company_id = :company_id
+            LIMIT 1
+        ");
+        $orderStmt->bindValue(':order_id', $order_id, PDO::PARAM_INT);
+        $orderStmt->bindValue(':company_id', $company_id, PDO::PARAM_INT);
+        $orderStmt->execute();
+        $order = $orderStmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$order) {
+            echo json_encode(['success' => false, 'message' => 'Order not found.']);
+            exit;
+        }
+
+        $stmt = $conn->prepare("
+            SELECT DISTINCT oi.part_number
+            FROM tblOrderItems oi
+            JOIN tblInventory i
+              ON i.part_number = oi.part_number
+             AND i.company_id = oi.company_id
+            WHERE oi.order_id = :order_id
+              AND oi.company_id = :company_id
+              AND i.group_id = 1
+              AND (oi.purchased_item IS NULL OR oi.purchased_item = '' OR oi.purchased_item = 0)
+            ORDER BY oi.part_number
+        ");
+        $stmt->bindValue(':order_id', $order_id, PDO::PARAM_INT);
+        $stmt->bindValue(':company_id', $company_id, PDO::PARAM_INT);
+        $stmt->execute();
+        $parts = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+        echo json_encode([
+            'success' => true,
+            'parts' => $parts,
+            'customer_contact' => $order['customer_contact']
+        ]);
+        exit;
+    } catch (Exception $e) {
+        error_log('get_process_order_csv_parts error: ' . $e->getMessage());
+        echo json_encode(['success' => false, 'message' => 'Server error while loading production CSV parts.']);
         exit;
     }
 }
