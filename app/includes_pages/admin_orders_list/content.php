@@ -1,0 +1,250 @@
+<?php
+// ======= BEGIN AMENDED BLOCK: includes_pages/admin_orders_list/content.php =======
+session_start();
+error_reporting(E_ALL);
+ini_set('display_errors', 'Off');
+include("../../includes/common.php");
+$database = new Database();
+$conn = $database->connect();
+
+// Capture tab filter from GET param
+$t_filter = isset($_GET['t']) ? (int)$_GET['t'] : 0;
+
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['tab_id']) && $_POST['tab_id'] == 'order_list') {
+    $currentPage = isset($_POST['current_page']) ? (int)$_POST['current_page'] : 1;
+    if ($currentPage < 1) { $currentPage = 1; }
+    $recordsPerPage = 20;
+
+    $searchQuery = isset($_POST['search']) ? trim($_POST['search']) : '';
+    $orderStatusId = isset($_POST['order_status_id']) ? $_POST['order_status_id'] : '';
+    $sortField = isset($_POST['sort_field']) ? $_POST['sort_field'] : '';
+    $sortOrder = isset($_POST['sort_order']) ? strtolower($_POST['sort_order']) : 'desc';
+    $offset = ($currentPage - 1) * $recordsPerPage;
+
+    // Build search conditions
+    $searchSQL = !empty($searchQuery)
+        ? " AND (customer_company LIKE :searchQuery
+                 OR id LIKE :searchQuery
+                 OR order_id LIKE :searchQuery
+                 OR customer_phone LIKE :searchQuery
+                 OR customer_notes LIKE :searchQuery
+                 OR site_address LIKE :searchQuery
+                 OR order_number LIKE :searchQuery
+                 OR site_email LIKE :searchQuery)"
+        : '';
+
+    // Status filter logic
+    // When searching, do NOT filter by status at all.
+    if (!empty($searchQuery)) {
+        $statusSQL = "";
+    } else {
+        if (!empty($orderStatusId)) {
+            $statusSQL = " AND order_status_id = :order_status_id";
+        } else {
+            if ($t_filter === 1) {
+                $statusSQL = " AND order_status_id = 1 AND order_status_id NOT IN (16, 17)";
+            } elseif ($t_filter === 2) {
+                $statusSQL = " AND order_status_id != 1 AND order_status_id NOT IN (16, 17)";
+            } else {
+                $statusSQL = " AND order_status_id NOT IN (10, 16, 17)";
+            }
+        }
+    }
+
+    $sortColumns = [
+        'created' => 'order_date',
+        'delivery' => 'delivery_date'
+    ];
+    $orderBy = 'order_id DESC';
+    if (isset($sortColumns[$sortField])) {
+        $sortDirection = ($sortOrder === 'asc') ? 'ASC' : 'DESC';
+        $orderBy = $sortColumns[$sortField] . ' ' . $sortDirection . ', order_id DESC';
+    }
+
+    try {
+        $query = "SELECT * FROM tblOrders
+                  WHERE company_id = :company_id
+                  {$searchSQL} {$statusSQL}
+                  ORDER BY {$orderBy}
+                  LIMIT :offset, :recordsPerPage";
+
+        $statement = $conn->prepare($query);
+        $statement->bindValue(':company_id', $_SESSION['session_company_id'], PDO::PARAM_INT);
+
+        if (!empty($searchQuery)) {
+            $likeSearchQuery = "%{$searchQuery}%";
+            $statement->bindValue(':searchQuery', $likeSearchQuery, PDO::PARAM_STR);
+        }
+        // Only bind order_status_id when not searching and a status was provided
+        if (empty($searchQuery) && !empty($orderStatusId)) {
+            $statement->bindValue(':order_status_id', $orderStatusId, PDO::PARAM_INT);
+        }
+
+        $statement->bindValue(':offset', $offset, PDO::PARAM_INT);
+        $statement->bindValue(':recordsPerPage', $recordsPerPage, PDO::PARAM_INT);
+        $statement->execute();
+
+        $rowCount = $statement->rowCount();
+
+        // Build only the table + pager. Controls are no longer included here.
+        if ($rowCount > 0) {
+            $output  = '<style>
+                .orders-board {
+                    border: 1px solid #e2e8f0;
+                    border-radius: 8px;
+                    overflow: hidden;
+                    background: #fff;
+                }
+                .orders-board-table {
+                    margin-bottom: 0;
+                    border-collapse: separate;
+                    border-spacing: 0 0.45rem;
+                    background: #f6f8fb;
+                }
+                .orders-board-table thead th {
+                    background: #f6f8fb;
+                    border: 0;
+                    color: #546070;
+                    font-size: 0.74rem;
+                    font-weight: 800;
+                    letter-spacing: 0.02em;
+                    padding: 0.65rem 0.8rem;
+                    text-transform: uppercase;
+                }
+                .orders-board-table tbody tr {
+                    cursor: pointer;
+                    transition: transform 0.15s ease, box-shadow 0.15s ease;
+                }
+                .orders-board-table tbody tr:hover {
+                    transform: translateY(-1px);
+                    box-shadow: 0 8px 18px rgba(33, 37, 41, 0.08);
+                }
+                .orders-board-table tbody td {
+                    background: #fff;
+                    border-bottom: 1px solid #e7edf5;
+                    border-top: 1px solid #e7edf5;
+                    padding: 0.8rem;
+                    vertical-align: middle;
+                }
+                .orders-board-table tbody td:first-child {
+                    border-left: 4px solid var(--order-accent, #0b3158);
+                    border-radius: 8px 0 0 8px;
+                }
+                .orders-board-table tbody td:last-child {
+                    border-right: 1px solid #e7edf5;
+                    border-radius: 0 8px 8px 0;
+                }
+                .order-id-badge {
+                    background: #eef4ff;
+                    border-radius: 999px;
+                    color: #0b3158;
+                    display: inline-block;
+                    font-size: 0.76rem;
+                    font-weight: 800;
+                    padding: 0.25rem 0.55rem;
+                }
+                .order-main {
+                    color: #1f2d3d;
+                    font-size: 0.95rem;
+                    font-weight: 800;
+                    line-height: 1.25;
+                }
+                .order-sub {
+                    color: #6c757d;
+                    font-size: 0.76rem;
+                    line-height: 1.35;
+                    margin-top: 0.18rem;
+                }
+                .order-date-block {
+                    color: #1f2d3d;
+                    font-size: 0.9rem;
+                    font-weight: 700;
+                    white-space: nowrap;
+                }
+                .order-date-label {
+                    color: #8a94a6;
+                    font-size: 0.68rem;
+                    font-weight: 800;
+                    text-transform: uppercase;
+                }
+                .order-status-pill {
+                    background: var(--status-soft, #eef0ff);
+                    border: 1px solid var(--status-border, #dfe3ff);
+                    border-radius: 999px;
+                    color: var(--status-color, #4154f1);
+                    display: inline-block;
+                    font-size: 0.76rem;
+                    font-weight: 800;
+                    padding: 0.28rem 0.65rem;
+                    white-space: nowrap;
+                }
+                .orders-sort-button {
+                    color: #546070 !important;
+                    font-size: 0.74rem;
+                    font-weight: 800 !important;
+                    text-transform: uppercase;
+                }
+            </style>';
+            $output .= '<div class="table-responsive orders-board">';
+            $output .= '<table class="table orders-board-table">';
+            $output .= '<thead><tr>';
+            $output .= '<th scope="col">id#</th>';
+            $output .= '<th scope="col">Customer</th>';
+            $output .= '<th scope="col">Order#</th>';
+            $output .= '<th scope="col"><button type="button" class="btn btn-link p-0 text-decoration-none orders-sort-button" onclick="sortOrdersByDate(\'created\')">Created <i class="bi bi-arrow-down-up"></i></button></th>';
+            $output .= '<th scope="col">Delivery</th>';
+            $output .= '<th scope="col"><button type="button" class="btn btn-link p-0 text-decoration-none orders-sort-button" onclick="sortOrdersByDate(\'delivery\')">Date <i class="bi bi-arrow-down-up"></i></button></th>';
+            $output .= '<th scope="col">Status</th>';
+            $output .= '</tr></thead><tbody>';
+
+            while ($row = $statement->fetch(PDO::FETCH_ASSOC)) {
+                $customer_contact = $row['cash_sale'] ? "Cash Sale" : $row['customer_contact'];
+                $customer_company = $row['cash_sale'] ? "Cash Sale" : $row['customer_company'];
+                $statusDescription = getTabFieCol('description','tblOrderStatus', 'id', $row['order_status_id'], $_SESSION['session_company_id']);
+                $statusLower = strtolower((string)$statusDescription);
+                $statusStyle = '--status-soft:#eef0ff;--status-border:#dfe3ff;--status-color:#4154f1;--order-accent:#4154f1;';
+                if (strpos($statusLower, 'quote') !== false) {
+                    $statusStyle = '--status-soft:#fff4e8;--status-border:#ffd9af;--status-color:#c65f00;--order-accent:#ff9f43;';
+                } elseif (strpos($statusLower, 'order') !== false) {
+                    $statusStyle = '--status-soft:#e8f8ef;--status-border:#c7efd6;--status-color:#1f8f4d;--order-accent:#2eca6a;';
+                } elseif (strpos($statusLower, 'invoice') !== false) {
+                    $statusStyle = '--status-soft:#e8f4ff;--status-border:#bfdefb;--status-color:#0b6fbf;--order-accent:#0d8de3;';
+                }
+                $site = trim($row['site_address'] . (!empty($row['site_suburb']) ? ', ' . $row['site_suburb'] : ''), ' ,');
+                $deliveryNote = !empty($row['delivery_note']) ? $row['delivery_note'] : '';
+                $createdDate = !empty($row['order_date']) ? date_c($row['order_date']) : '-';
+                $deliveryDate = !empty($row['delivery_date']) ? date_c($row['delivery_date']) : '-';
+
+                $output .= '<tr onclick="redirectToJob(' . (int)$row['order_id'] . ')" style="' . $statusStyle . '">';
+                $output .= '<td><span class="order-id-badge">#' . htmlspecialchars($row['order_id']) . '</span></td>';
+                $output .= '<td><div class="order-main">' . htmlspecialchars($customer_company) . '</div><div class="order-sub">' . htmlspecialchars($customer_contact) . '</div></td>';
+                $output .= '<td><div class="order-main">' . htmlspecialchars($row['order_number']) . '</div><div class="order-sub">' . htmlspecialchars($row['customer_phone']) . '</div></td>';
+                $output .= '<td><div class="order-date-label">Created</div><div class="order-date-block">' . htmlspecialchars($createdDate) . '</div></td>';
+                $output .= '<td><div class="order-main">' . htmlspecialchars($site) . '</div><div class="order-sub">' . htmlspecialchars($deliveryNote) . '</div></td>';
+                $output .= '<td><div class="order-date-label">Delivery</div><div class="order-date-block">' . htmlspecialchars($deliveryDate) . '</div></td>';
+                $output .= '<td><span class="order-status-pill">' . htmlspecialchars($statusDescription) . '</span></td>';
+                $output .= '</tr>';
+            }
+
+            $output .= '</tbody></table></div>';
+        } else {
+            // No results - keep controls intact (they're on the main page), just show a friendly message.
+            $output = '<div class="card"><div class="card-body"><p>No Orders found</p></div></div>';
+        }
+
+        // Pager (still appended as before)
+        $output .= '<div class="d-flex justify-content-end mt-2">';
+        $output .= '<button onclick="goToPreviousPage()" class="btn btn-outline-secondary" ' . ($currentPage <= 1 ? 'disabled' : '') . '><i class="bx bx-chevron-left"></i></button>';
+        $output .= '<button onclick="goToNextPage()" class="btn btn-outline-secondary"><i class="bx bx-chevron-right"></i></button>';
+        $output .= '</div>';
+
+        echo $output;
+
+    } catch (PDOException $e) {
+        echo '<div class="card"><div class="card-body"><p>Error fetching: ' . $e->getMessage() . '</p></div></div>';
+    }
+
+    $conn = null;
+    exit;
+}
+// ======= END AMENDED BLOCK: includes_pages/admin_orders_list/content.php =======

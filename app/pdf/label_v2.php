@@ -1,0 +1,129 @@
+<?php
+session_start();
+// Include the main TCPDF library (search for installation path).
+require_once('../assets/vendor/tcpdf/tcpdf.php');
+
+// Include database connection
+include("../includes/common.php");
+requireLoggedInDownload();
+require_once("defaults.php");
+
+// Fetch data from the database
+$query = "
+    SELECT * FROM tblOrderSubItems WHERE order_id = :order_id AND pack_id = :pack_id ORDER BY pack_id
+";
+$database = new Database();
+$conn = $database->connect();
+$statement = $conn->prepare($query);
+
+$statement->bindValue(':order_id', $_GET['order_id'], PDO::PARAM_INT);
+$statement->bindValue(':pack_id', $_GET['pack_id'], PDO::PARAM_INT);
+$statement->execute();
+$results = $statement->fetchAll(PDO::FETCH_ASSOC);
+
+// Define custom page size in millimeters (190mm x 59mm)
+$customPageWidth = 190;
+$customPageHeight = 59;
+$customPageSize = array($customPageWidth, $customPageHeight);
+
+$pack_no = $_GET['pack_id'];
+$max_pack_no = getMaxPackOrder($_GET['order_id'], $_SESSION['session_company_id']);
+$pack_weight = getWeightPackOrder($_GET['order_id'], $_SESSION['session_company_id'], $pack_no);
+$part_number = gePartNumberPack($_GET['order_id'], $_SESSION['session_company_id'], $pack_no);
+$part_description = gePartDescriptionPack($_GET['order_id'], $_SESSION['session_company_id'], $pack_no);
+
+// Create new PDF document with custom page size in landscape orientation
+$pdf = new TCPDF('L', PDF_UNIT, $customPageSize, true, 'UTF-8', false);
+$logo = '../assets/img/featherstone_v.jpg';
+
+// Set document information
+$pdf->SetCreator('l');
+$pdf->SetAuthor('Your Name');
+$pdf->SetTitle('Custom Size PDF');
+$pdf->SetSubject('TCPDF Tutorial');
+
+// Disable header and footer
+$pdf->setPrintHeader(false);
+$pdf->setPrintFooter(false);
+
+// Set default monospaced font
+$pdf->SetDefaultMonospacedFont(PDF_FONT_MONOSPACED);
+
+// Set all margins to 5 units
+$pdf->SetMargins(5, 5, 5);
+$pdf->SetHeaderMargin(0);
+$pdf->SetFooterMargin(5);
+
+// Set auto page breaks
+$pdf->SetAutoPageBreak(FALSE, 5);
+
+// Set image scale factor
+$pdf->setImageScale(PDF_IMAGE_SCALE_RATIO);
+
+// Add a page
+$pdf->AddPage();
+
+// Add the logo
+$pdf->Image($logo, 5, 5, 20, 50);
+
+// Add text content
+// Add text content
+$pdf->SetFont('helvetica', 'B', 18);
+$pdf->Text(30, 5, $customer);
+$pdf->SetFont('helvetica', 'B', 12);
+$pdf->Text(30, 17, 'REF: ' . $order_number);
+$pdf->Text(30, 22, 'ADDR: ' . $site_suburb);
+$pdf->Text(30, 27, 'NOTE: ' . $order_delivery_note);
+$pdf->Text(30, 32, 'Del. ' . $order_delivery_short . ' ' . $order_delivery_date);
+$pdf->Text(30, 37, $part_description. ' (' . $part_number.')'  );
+$pdf->Text(30, 42, 'PACK ' . $pack_no . ' of ' . $max_pack_no);
+
+// Prepare the table HTML
+$tableHtml = '
+<table border="0" cellpadding="1" cellspacing="0">
+    <thead>
+        <tr>
+			<th style="border-top: 1px solid #737373; border-bottom: 1px solid #737373; border-left: 1px solid #737373; width: 5px;"></th>
+            <th style="border-top: 1px solid #737373; border-bottom: 1px solid #737373;" >Item</th>
+            <th style="border-top: 1px solid #737373; border-bottom: 1px solid #737373;" >Quantity</th>
+            <th style="border-top: 1px solid #737373; border-bottom: 1px solid #737373; border-right: 1px solid #737373;" >Length</th>
+        </tr>
+    </thead>
+    <tbody>';
+
+foreach ($results as $row) {
+    $tableHtml .= '
+        <tr>
+			<td style="border-left: 1px solid #737373; width: 5px"></td>
+            <td >' . htmlspecialchars($row['mark']) . '</td>
+            <td>' . htmlspecialchars($row['qty']) . '</td>
+            <td style="border-right: 1px solid #737373;">' . htmlspecialchars($row['qty_unit']) . '</td>
+        </tr>';
+}
+$tableHtml .= '
+        <tr>
+			<td style="border-left: 1px solid #737373; border-bottom: 1px solid #737373; width: 5px"></td>
+            <td style="border-bottom: 1px solid #737373; border-right: 1px solid #737373; " colspan="3">Total Pack Weight ' . $pack_weight . ' kg</td>
+        </tr>';
+
+$tableHtml .= '
+    </tbody>
+</table>';
+$pdf->SetFont('helvetica', 'B', 14);
+$pdf->writeHTMLCell(75, 0, 100, 5, '#'.$_GET['order_id'], 0, 1, 0, true, 'R', true);
+$pdf->SetFont('helvetica', '', 7);
+$pdf->writeHTMLCell(75, 0, 120, 12, $tableHtml, 0, 1, 0, true, '', true);
+
+// Define the file path
+$file_path = '/home/entacom/public_html/featherstone/label_order'.$_GET['order_id'].'-Pack'.$pack_no.'.pdf';
+
+// Close and save PDF document
+$pdf->Output($file_path, 'F');
+
+// Offer the file for download
+header('Content-Type: application/pdf');
+header('Content-Disposition: attachment; filename="label_order'.$_GET['order_id'].'-Pack'.$pack_no.'.pdf"');
+header('Content-Length: ' . filesize($file_path));
+readfile($file_path);
+exit();
+?>

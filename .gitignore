@@ -1,0 +1,42 @@
+# Local/private configuration
+web_config_ft.php
+.env
+*.env
+
+# Dreamweaver metadata
+_notes/
+**/_notes/
+
+# Logs and diagnostics
+*.log
+php_debug.log
+myob_api_response.log
+app/info.php
+
+# Generated/public runtime files
+app/files/
+files/
+*.pdf
+
+# Backups, originals, archives
+*_orig.php
+*.bak
+*.backup
+*.old
+*.tmp
+*.zip
+*.tar
+*.gz
+
+# Certificates and private keys
+*.key
+*.pem
+*.p12
+*.crt
+*.cer
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

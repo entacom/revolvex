@@ -1,0 +1,54 @@
+[25-Jun-2024 04:39:56 UTC] PHP Warning:  Undefined array key 1 in /home/actionbu/public_html/enact/includes/process_email.php on line 47
+[25-Jun-2024 04:43:26 UTC] PHP Warning:  Undefined array key 1 in /home/actionbu/public_html/enact/includes/process_email.php on line 47
+[25-Jun-2024 04:48:25 UTC] PHP Warning:  Undefined array key 1 in /home/actionbu/public_html/enact/includes/process_email.php on line 44
+[25-Jun-2024 04:48:25 UTC] PHP Warning:  Undefined array key "To" in /home/actionbu/public_html/enact/includes/process_email.php on line 57
+[25-Jun-2024 04:48:25 UTC] PHP Deprecated:  preg_match(): Passing null to parameter #2 ($subject) of type string is deprecated in /home/actionbu/public_html/enact/includes/process_email.php on line 57
+[25-Jun-2024 04:48:25 UTC] PHP Warning:  Undefined array key "Delivered-To" in /home/actionbu/public_html/enact/includes/process_email.php on line 60
+[25-Jun-2024 04:48:25 UTC] PHP Deprecated:  preg_match(): Passing null to parameter #2 ($subject) of type string is deprecated in /home/actionbu/public_html/enact/includes/process_email.php on line 60
+[25-Jun-2024 04:48:25 UTC] PHP Deprecated:  explode(): Passing null to parameter #2 ($string) of type string is deprecated in /home/actionbu/public_html/enact/includes/process_email.php on line 77
+[25-Jun-2024 04:51:26 UTC] PHP Warning:  Undefined array key 1 in /home/actionbu/public_html/enact/includes/process_email.php on line 44
+[25-Jun-2024 04:51:26 UTC] PHP Deprecated:  explode(): Passing null to parameter #2 ($string) of type string is deprecated in /home/actionbu/public_html/enact/includes/process_email.php on line 77
+[25-Jun-2024 04:53:54 UTC] PHP Warning:  Undefined array key 1 in /home/actionbu/public_html/enact/includes/process_email.php on line 44
+[25-Jun-2024 04:53:54 UTC] PHP Deprecated:  explode(): Passing null to parameter #2 ($string) of type string is deprecated in /home/actionbu/public_html/enact/includes/process_email.php on line 81
+[25-Jun-2024 05:27:58 UTC] PHP Warning:  require(/home/actionbu/public_html/enact/assets/vendors/autoload.php): Failed to open stream: No such file or directory in /home/actionbu/public_html/enact/includes/process_email.php on line 4
+[25-Jun-2024 05:27:58 UTC] PHP Fatal error:  Uncaught Error: Failed opening required '/home/actionbu/public_html/enact/assets/vendors/autoload.php' (include_path='.:/opt/cpanel/ea-php81/root/usr/share/pear') in /home/actionbu/public_html/enact/includes/process_email.php:4
+Stack trace:
+#0 {main}
+  thrown in /home/actionbu/public_html/enact/includes/process_email.php on line 4
+[25-Jun-2024 06:45:02 UTC] PHP Deprecated:  Return type of Laminas\Mail\Storage\Part::hasChildren() should either be compatible with RecursiveIterator::hasChildren(): bool, or the #[\ReturnTypeWillChange] attribute should be used to temporarily suppress the notice in /home/actionbu/vendor/laminas/laminas-mail/src/Storage/Part.php on line 397
+[25-Jun-2024 06:45:02 UTC] PHP Deprecated:  Return type of Laminas\Mail\Storage\Part::getChildren() should either be compatible with RecursiveIterator::getChildren(): ?RecursiveIterator, or the #[\ReturnTypeWillChange] attribute should be used to temporarily suppress the notice in /home/actionbu/vendor/laminas/laminas-mail/src/Storage/Part.php on line 408
+[25-Jun-2024 06:45:02 UTC] PHP Deprecated:  Return type of Laminas\Mail\Storage\Part::current() should either be compatible with Iterator::current(): mixed, or the #[\ReturnTypeWillChange] attribute should be used to temporarily suppress the notice in /home/actionbu/vendor/laminas/laminas-mail/src/Storage/Part.php on line 449
+[25-Jun-2024 06:45:02 UTC] PHP Deprecated:  Return type of Laminas\Mail\Storage\Part::next() should either be compatible with Iterator::next(): void, or the #[\ReturnTypeWillChange] attribute should be used to temporarily suppress the notice in /home/actionbu/vendor/laminas/laminas-mail/src/Storage/Part.php on line 429
+[25-Jun-2024 06:45:02 UTC] PHP Deprecated:  Return type of Laminas\Mail\Storage\Part::key() should either be compatible with Iterator::key(): mixed, or the #[\ReturnTypeWillChange] attribute should be used to temporarily suppress the notice in /home/actionbu/vendor/laminas/laminas-mail/src/Storage/Part.php on line 439
+[25-Jun-2024 06:45:02 UTC] PHP Deprecated:  Return type of Laminas\Mail\Storage\Part::valid() should either be compatible with Iterator::valid(): bool, or the #[\ReturnTypeWillChange] attribute should be used to temporarily suppress the notice in /home/actionbu/vendor/laminas/laminas-mail/src/Storage/Part.php on line 418
+[25-Jun-2024 06:45:02 UTC] PHP Deprecated:  Return type of Laminas\Mail\Storage\Part::rewind() should either be compatible with Iterator::rewind(): void, or the #[\ReturnTypeWillChange] attribute should be used to temporarily suppress the notice in /home/actionbu/vendor/laminas/laminas-mail/src/Storage/Part.php on line 457
+[25-Jun-2024 06:45:02 UTC] PHP Deprecated:  Return type of Laminas\Mail\Storage\Part::hasChildren() should either be compatible with RecursiveIterator::hasChildren(): bool, or the #[\ReturnTypeWillChange] attribute should be used to temporarily suppress the notice in /home/actionbu/vendor/laminas/laminas-mail/src/Storage/Part.php on line 397
+[25-Jun-2024 06:45:02 UTC] PHP Deprecated:  Return type of Laminas\Mail\Storage\Part::getChildren() should either be compatible with RecursiveIterator::getChildren(): ?RecursiveIterator, or the #[\ReturnTypeWillChange] attribute should be used to temporarily suppress the notice in /home/actionbu/vendor/laminas/laminas-mail/src/Storage/Part.php on line 408
+[25-Jun-2024 06:45:02 UTC] PHP Deprecated:  Return type of Laminas\Mail\Storage\Part::current() should either be compatible with Iterator::current(): mixed, or the #[\ReturnTypeWillChange] attribute should be used to temporarily suppress the notice in /home/actionbu/vendor/laminas/laminas-mail/src/Storage/Part.php on line 449
+[25-Jun-2024 06:45:02 UTC] PHP Deprecated:  Return type of Laminas\Mail\Storage\Part::next() should either be compatible with Iterator::next(): void, or the #[\ReturnTypeWillChange] attribute should be used to temporarily suppress the notice in /home/actionbu/vendor/laminas/laminas-mail/src/Storage/Part.php on line 429
+[25-Jun-2024 06:45:02 UTC] PHP Deprecated:  Return type of Laminas\Mail\Storage\Part::key() should either be compatible with Iterator::key(): mixed, or the #[\ReturnTypeWillChange] attribute should be used to temporarily suppress the notice in /home/actionbu/vendor/laminas/laminas-mail/src/Storage/Part.php on line 439
+[25-Jun-2024 06:45:02 UTC] PHP Deprecated:  Return type of Laminas\Mail\Storage\Part::valid() should either be compatible with Iterator::valid(): bool, or the #[\ReturnTypeWillChange] attribute should be used to temporarily suppress the notice in /home/actionbu/vendor/laminas/laminas-mail/src/Storage/Part.php on line 418
+[25-Jun-2024 06:45:02 UTC] PHP Deprecated:  Return type of Laminas\Mail\Storage\Part::rewind() should either be compatible with Iterator::rewind(): void, or the #[\ReturnTypeWillChange] attribute should be used to temporarily suppress the notice in /home/actionbu/vendor/laminas/laminas-mail/src/Storage/Part.php on line 457
+[25-Jun-2024 06:45:02 UTC] PHP Deprecated:  Return type of Laminas\Mail\Headers::count() should either be compatible with Countable::count(): int, or the #[\ReturnTypeWillChange] attribute should be used to temporarily suppress the notice in /home/actionbu/vendor/laminas/laminas-mail/src/Headers.php on line 404
+[25-Jun-2024 06:45:02 UTC] PHP Deprecated:  Return type of Laminas\Mail\Headers::current() should either be compatible with Iterator::current(): mixed, or the #[\ReturnTypeWillChange] attribute should be used to temporarily suppress the notice in /home/actionbu/vendor/laminas/laminas-mail/src/Headers.php on line 389
+[25-Jun-2024 06:45:02 UTC] PHP Deprecated:  Return type of Laminas\Mail\Headers::next() should either be compatible with Iterator::next(): void, or the #[\ReturnTypeWillChange] attribute should be used to temporarily suppress the notice in /home/actionbu/vendor/laminas/laminas-mail/src/Headers.php on line 350
+[25-Jun-2024 06:45:02 UTC] PHP Deprecated:  Return type of Laminas\Mail\Headers::key() should either be compatible with Iterator::key(): mixed, or the #[\ReturnTypeWillChange] attribute should be used to temporarily suppress the notice in /home/actionbu/vendor/laminas/laminas-mail/src/Headers.php on line 360
+[25-Jun-2024 06:45:02 UTC] PHP Deprecated:  Return type of Laminas\Mail\Headers::valid() should either be compatible with Iterator::valid(): bool, or the #[\ReturnTypeWillChange] attribute should be used to temporarily suppress the notice in /home/actionbu/vendor/laminas/laminas-mail/src/Headers.php on line 370
+[25-Jun-2024 06:45:02 UTC] PHP Deprecated:  Return type of Laminas\Mail\Headers::rewind() should either be compatible with Iterator::rewind(): void, or the #[\ReturnTypeWillChange] attribute should be used to temporarily suppress the notice in /home/actionbu/vendor/laminas/laminas-mail/src/Headers.php on line 379
+[02-Jul-2024 00:24:43 UTC] PHP Fatal error:  Uncaught Error: Undefined constant "STDOUT" in /home/actionbu/public_html/enact/includes/process_email.php:8
+Stack trace:
+#0 {main}
+  thrown in /home/actionbu/public_html/enact/includes/process_email.php on line 8
+[02-Jul-2024 00:46:08 UTC] PHP Fatal error:  Uncaught Error: Undefined constant "STDOUT" in /home/actionbu/public_html/enact/includes/process_email.php:3
+Stack trace:
+#0 {main}
+  thrown in /home/actionbu/public_html/enact/includes/process_email.php on line 3
+[02-Jul-2024 00:51:23 UTC] PHP Fatal error:  Uncaught Error: Undefined constant "STDOUT" in /home/actionbu/public_html/enact/includes/process_email.php:8
+Stack trace:
+#0 {main}
+  thrown in /home/actionbu/public_html/enact/includes/process_email.php on line 8
+[03-Jul-2024 21:04:50 UTC] PHP Notice:  Only variables should be passed by reference in /home/actionbu/public_html/enact/includes/process_email.php on line 132
+[03-Jul-2024 21:10:53 UTC] PHP Notice:  Only variables should be passed by reference in /home/actionbu/public_html/enact/includes/process_email.php on line 132
+[03-Jul-2024 21:17:38 UTC] PHP Notice:  Only variables should be passed by reference in /home/actionbu/public_html/enact/includes/process_email.php on line 131
+[03-Jul-2024 21:22:06 UTC] PHP Notice:  Only variables should be passed by reference in /home/actionbu/public_html/enact/includes/process_email.php on line 131
+[03-Jul-2024 21:25:44 UTC] PHP Notice:  Only variables should be passed by reference in /home/actionbu/public_html/enact/includes/process_email.php on line 131

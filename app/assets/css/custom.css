@@ -1,0 +1,574 @@
+:root {
+  --left-nav-color: #5a5f6e;
+}
+.small-alert {
+    padding: 0.3rem 1rem;
+    font-size: 0.875rem;
+}
+.hover-row:hover {
+    background-color: #f1f1f1;
+    cursor: pointer;
+}
+.custom-tabs {
+    gap: 0;
+    align-items: flex-end;
+}
+
+.custom-tabs .nav-item {
+    margin: 0;
+}
+
+.custom-tabs .nav-link {
+    color: #333; /* Tab text color */
+    background-color: #f0f0f0; /* Tab background color */
+    border: 1px solid #ccc; /* Tab border color */
+    border-radius: 0.25rem 0.25rem 0 0; /* Rounded corners */
+    margin: 0;
+    white-space: nowrap;
+}
+
+.custom-tabs .nav-item + .nav-item .nav-link {
+    margin-left: -1px;
+}
+
+.custom-tabs .nav-link.active {
+    background-color: #e1e1e1; /* Active tab background color */
+    border-color: #ccc; /* Active tab border color */
+}
+
+.custom-tabs .nav-link:hover {
+    background-color: #ddd; /* Hovered tab background color */
+    border-color: #ccc; /* Hovered tab border color */
+}
+
+.order-page-main {
+    --order-ink: #102a43;
+    --order-muted: #697386;
+    --order-line: #dbe4ef;
+    --order-surface: #ffffff;
+    --order-soft: #f5f8fc;
+    --order-blue: #1f5fbd;
+    --order-green: #16865b;
+}
+
+.order-page-main .order-hero-card {
+    margin-bottom: 1.2rem !important;
+    transition: box-shadow 160ms ease, transform 160ms ease;
+}
+
+.order-page-main .order-hero-card:hover {
+    box-shadow: 0 16px 34px rgba(25, 42, 70, 0.14);
+    transform: translateY(-1px);
+}
+
+.order-page-main .order-hero-meta {
+    transition: border-color 160ms ease, background-color 160ms ease, box-shadow 160ms ease;
+}
+
+.order-page-main .order-hero-meta:hover {
+    background-color: #fff;
+    border-color: #cdd9ea;
+    box-shadow: 0 6px 18px rgba(35, 55, 85, 0.07);
+}
+
+.order-page-main .custom-tabs {
+    background: linear-gradient(180deg, #f8fafd 0%, #eef3fa 100%);
+    border: 1px solid var(--order-line);
+    border-bottom: 0;
+    border-radius: 8px 8px 0 0;
+    box-shadow: 0 8px 22px rgba(31, 45, 61, 0.05);
+    overflow-x: auto;
+    padding: 0.28rem 0.28rem 0;
+}
+
+.order-page-main .custom-tabs .nav-link {
+    align-items: center;
+    background: transparent;
+    border: 0;
+    border-bottom: 3px solid transparent;
+    border-radius: 6px 6px 0 0;
+    color: #44566c;
+    display: inline-flex;
+    font-size: 0.9rem;
+    font-weight: 650;
+    gap: 0.32rem;
+    min-height: 38px;
+    padding: 0.52rem 0.8rem;
+    transition: background-color 140ms ease, color 140ms ease, border-color 140ms ease;
+}
+
+.order-page-main .custom-tabs .nav-item + .nav-item .nav-link {
+    margin-left: 0;
+}
+
+.order-page-main .custom-tabs .nav-link:hover {
+    background: rgba(31, 95, 189, 0.08);
+    border-color: rgba(31, 95, 189, 0.32);
+    color: var(--order-blue);
+}
+
+.order-page-main .custom-tabs .nav-link.active {
+    background: #fff;
+    border-color: var(--order-blue);
+    color: var(--order-ink);
+    box-shadow: 0 -1px 0 #fff inset;
+}
+
+.order-page-main #jobs_tab_body {
+    background: linear-gradient(180deg, #ffffff 0%, #f6f9fd 100%);
+    border: 1px solid var(--order-line);
+    border-radius: 0 8px 8px 8px;
+    box-shadow: 0 14px 30px rgba(31, 45, 61, 0.07);
+    padding: 1rem;
+}
+
+.order-page-main #jobs_tab_body > .row {
+    --bs-gutter-x: 1rem;
+    --bs-gutter-y: 1rem;
+}
+
+.order-page-main #jobs_tab_body .card {
+    background: var(--order-surface);
+    border: 1px solid #e2e9f2;
+    border-radius: 8px;
+    box-shadow: 0 8px 22px rgba(31, 45, 61, 0.06);
+    overflow: hidden;
+    transition: border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+}
+
+.order-page-main #jobs_tab_body .card:hover {
+    border-color: #c8d6e8;
+    box-shadow: 0 12px 26px rgba(31, 45, 61, 0.10);
+    transform: translateY(-1px);
+}
+
+.order-page-main #jobs_tab_body .card-body {
+    padding: 1rem 1.05rem;
+}
+
+.order-page-main #jobs_tab_body .card-title {
+    align-items: center;
+    color: var(--order-ink);
+    display: flex;
+    font-size: 1rem;
+    font-weight: 800;
+    gap: 0.45rem;
+    margin: 0 0 0.9rem;
+    padding: 0;
+}
+
+.order-page-main #jobs_tab_body .card-title::before {
+    background: linear-gradient(180deg, var(--order-blue), var(--order-green));
+    border-radius: 999px;
+    content: "";
+    display: inline-block;
+    height: 18px;
+    width: 4px;
+}
+
+.order-page-main #jobs_tab_body .row.mb-0 {
+    margin-bottom: 0.45rem !important;
+}
+
+.order-page-main #jobs_tab_body .col-form-label {
+    color: #435166;
+    font-size: 0.84rem;
+    font-weight: 650;
+    padding-bottom: 0.22rem;
+    padding-top: 0.24rem;
+}
+
+.order-page-main #jobs_tab_body .form-control,
+.order-page-main #jobs_tab_body .form-select,
+.order-page-main #jobs_tab_body select {
+    background-color: #fbfdff;
+    border-color: #d5dfeb;
+    border-radius: 5px;
+    color: #24364b;
+    font-size: 0.84rem;
+    min-height: 31px;
+    transition: background-color 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
+}
+
+.order-page-main #jobs_tab_body textarea.form-control {
+    min-height: 92px;
+}
+
+.order-page-main #jobs_tab_body .form-control:hover,
+.order-page-main #jobs_tab_body .form-select:hover,
+.order-page-main #jobs_tab_body select:hover {
+    background-color: #fff;
+    border-color: #b8c8dc;
+}
+
+.order-page-main #jobs_tab_body .form-control:focus,
+.order-page-main #jobs_tab_body .form-select:focus,
+.order-page-main #jobs_tab_body select:focus {
+    background-color: #fff;
+    border-color: var(--order-blue);
+    box-shadow: 0 0 0 0.16rem rgba(31, 95, 189, 0.14);
+}
+
+.order-page-main #jobs_tab_body .input-group-text {
+    background: #edf3fa;
+    border-color: #d5dfeb;
+    color: #405168;
+    font-size: 0.82rem;
+    font-weight: 700;
+}
+
+.order-page-main #jobs_tab_body .form-switch .form-check-input {
+    cursor: pointer;
+}
+
+.order-page-main #jobs_tab_body .table tbody tr,
+.order-page-main #jobs_tab_body .list-group-item,
+.order-page-main #jobs_tab_body .hover-row {
+    transition: background-color 140ms ease, box-shadow 140ms ease;
+}
+
+.order-page-main #jobs_tab_body .table tbody tr:hover,
+.order-page-main #jobs_tab_body .list-group-item:hover,
+.order-page-main #jobs_tab_body .hover-row:hover {
+    background-color: #f0f6ff;
+}
+
+.process-order-list .list-group-item > div:first-child {
+    min-width: 0;
+}
+
+.process-activity-summary {
+    display: block;
+    margin-top: 0.15rem;
+    line-height: 1.25;
+}
+
+.process-activity-summary i {
+    position: relative;
+    top: 1px;
+}
+
+.order-activity-panel {
+    background: #fff;
+    border: 1px solid #d9e1ec;
+    border-radius: 6px;
+    padding: 0.85rem 1rem;
+    box-shadow: 0 8px 22px rgba(31, 45, 61, 0.06);
+}
+
+.order-activity-title {
+    color: #092a4a;
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.order-activity-table {
+    border-color: #dfe5ec;
+    font-size: 0.82rem;
+}
+
+.order-activity-table thead th {
+    background: #f5f7fa;
+    color: #4b5563;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0;
+    padding: 0.42rem 0.55rem;
+    text-transform: uppercase;
+}
+
+.order-activity-table tbody td {
+    color: #374151;
+    padding: 0.38rem 0.55rem;
+    transition: background-color 120ms ease, color 120ms ease;
+    vertical-align: middle;
+}
+
+.order-activity-table tbody tr {
+    --bs-table-bg: #fff;
+    --bs-table-accent-bg: transparent;
+}
+
+.order-activity-table tbody tr:hover {
+    --bs-table-bg: #eef6ff;
+    --bs-table-accent-bg: #eef6ff;
+    cursor: pointer;
+}
+
+.order-activity-table tbody tr:hover > td,
+.order-activity-table tbody tr:hover > th {
+    background-color: #eef6ff !important;
+    color: #102a43;
+}
+
+.activity-col-status {
+    width: 86px;
+}
+
+.activity-col-date {
+    width: 128px;
+}
+
+.activity-col-user {
+    width: 150px;
+}
+
+.activity-col-buttons {
+    width: 72px;
+}
+
+.activity-description {
+    line-height: 1.25;
+}
+
+.activity-badge {
+    align-items: center;
+    background: #16865b;
+    display: inline-flex;
+    gap: 0.2rem;
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 0.2rem 0.42rem;
+}
+
+.activity-actions {
+    display: inline-flex;
+    gap: 0.18rem;
+}
+
+.btn-xs {
+    border-radius: 4px;
+    font-size: 0.75rem;
+    line-height: 1;
+    padding: 0.28rem 0.34rem;
+}
+.client-thumb {
+    position: relative;
+    width: 100px; /* Adjust width as needed */
+    height: 100px; /* Adjust height as needed */
+    overflow: hidden;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    transition: transform 0.3s ease;
+    margin-bottom: 20px; /* Adjust margin as needed */
+}
+
+.client-thumb-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+.client-thumb:hover {
+    transform: scale(1.20); /* Zoom effect on hover, adjust as needed */
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+    border: medium #F8373B; /* Red border */
+}
+
+.dropzone_user {
+    border: 2px dashed #333;
+    border-radius: 10px;
+    background-color: #f5f5f5;
+    width: 150px; /* Set your preferred width */
+    height: 150px; /* Set your preferred height */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-weight: bold;
+    font-size: 16px; /* Adjust text size for better visibility */
+    color: #333;
+    text-align: center; /* Center align text horizontally */
+    line-height: 1.5; /* Set line height for better text visibility */
+}
+
+.dropzone_user:before {
+    content: 'Click to upload'; /* Add the default message text */
+}
+
+/* Dropzone CSS with bold styling */
+.dropzone {
+    border: 2px dashed #333; /* Bold dashed border */
+    border-radius: 10px; /* Rounded corners */
+    background-color: #f5f5f5; /* Light background color */
+    color: #333; /* Text color */
+}
+.dropzone_av {
+    border: 2px dashed #333; /* Bold dashed border */
+    border-radius: 5px; /* Rounded corners */
+    background-color: #f5f5f5; /* Light background color */
+    color: #333; /* Text color */
+    height: 30px; /* Set your preferred height */
+    width: 150px; /* Set your preferred width */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 14px; /* Adjust font size as needed */
+}
+
+/* Styling for the message inside Dropzone */
+.dropzone .dz-message {
+    margin: 10px auto; /* Center the message */
+}
+
+/* Styling for the active state of Dropzone */
+.dropzone.dragover {
+    background-color: #e0e0e0; /* Background color when files are dragged over */
+}
+/* File List */
+.file-list {
+  list-style: none;
+  padding: 0;
+}
+
+/* File Item */
+.file-item {
+  margin-bottom: 15px;
+  border: 1px solid #ccc;
+  padding: 10px;
+}
+
+/* File Details */
+.file-details {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.file-name,
+.file-path {
+  margin: 5px 0;
+}
+
+.download-link {
+  text-decoration: none;
+  color: #007bff; /* Change color as needed */
+  font-weight: bold;
+  display: inline-block;
+  margin-top: 5px;
+}
+.file-edit a,
+.file-download a {
+    color: #666; /* Change to the desired color (e.g., black) */
+}
+/* Modern Table Styles with Unique 'abh' Prefix */
+.abh-table-responsive {
+    overflow-x: auto;
+}
+
+.abh-table {
+    width: 100%;
+    border-collapse: collapse;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.abh-table th,
+.abh-table td {
+    padding: 10px;
+    text-align: left;
+    vertical-align: top;
+	border-bottom: 2px solid #ddd;
+}
+
+.abh-table thead {
+    background-color: #f5f5f5;
+    border-bottom: 2px solid #ddd;
+}
+
+.abh-table th {
+    font-weight: bold;
+}
+
+.abh-table tbody tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+.abh-table tbody tr:hover {
+    background-color: #f0f0f0;
+}
+.sm-text {
+    font-size: 0.85rem; /* Adjust the font size as needed */
+}
+.form-check-input:checked {
+    background-color: green; /* Change to your desired success color */
+    border-color: green; /* Change to your desired border color */
+}
+/* Sidebar Styles */
+/* Adjusting Sidebar Width */
+#sidebar {
+    background:  var(--left-nav-color);
+    color: #CCC;
+    transition: all 0.3s;
+  
+}
+
+#sidebar .sidebar-header {
+    padding: 10px;
+    background: var(--left-nav-color);
+    color: #CCC; /* Text color changed to #CCC */
+}
+
+#sidebar ul.sidebar-nav {
+    padding: 20px 10px;
+    border-bottom: 1px solid var(--left-nav-color);
+    list-style: none;
+    margin: 0;
+    padding-left: 0;
+}
+
+#sidebar ul.sidebar-nav li.nav-item {
+    margin-bottom: 10px;
+}
+
+#sidebar ul.sidebar-nav li.nav-item a.nav-link {
+    padding: 5px;
+    display: block;
+    background: var(--left-nav-color);
+    color: #CCC; /* Text color changed to #CCC */
+    text-decoration: none;
+}
+
+#sidebar ul.sidebar-nav li.nav-item a.nav-link:hover,
+#sidebar ul.sidebar-nav li.nav-item a.nav-link:hover i {
+    color: #FFF;
+    background: var(--left-nav-color);
+}
+
+#sidebar ul.sidebar-nav li.nav-item a.nav-link i {
+    color: #e2dcd4; /* Changing icon color to gold */
+    margin-right: 5px;
+}
+
+/* Submenu Styles */
+#sidebar ul.sidebar-nav ul.nav-content {
+    padding-left: 20px;
+    list-style: none;
+    margin: 0;
+}
+
+#sidebar ul.sidebar-nav ul.nav-content li {
+    margin-bottom: 5px;
+}
+
+#sidebar ul.sidebar-nav ul.nav-content li a {
+    padding: 5px;
+    display: block;
+    background: var(--left-nav-color);
+    color: #CCC; /* Text color changed to #CCC */
+    text-decoration: none;
+}
+
+#sidebar ul.sidebar-nav ul.nav-content li a:hover {
+    color: #FFF;
+    background: var(--left-nav-color);
+}
+
+
+
+
+
+
+
+
