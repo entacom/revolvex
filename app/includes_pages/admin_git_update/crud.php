@@ -14,118 +14,253 @@ if (!in_array($_SESSION['session_group_id'], [11, 12, 13])) {
 }
 
 $action = isset($_POST['action']) ? $_POST['action'] : '';
-$repoPath = '/home/revolvexcom/revolvex';
+$repoOwner = 'entacom';
+$repoName = 'revolvex';
+$branch = 'main';
 $deployPath = '/home/revolvexcom/public_html';
-$deployLog = $repoPath . '/deploy_history.log';
+$fallbackRepoPath = '/home/revolvexcom/revolvex';
+$deployLog = $fallbackRepoPath . '/deploy_history.log';
 $lockFile = sys_get_temp_dir() . '/revolvex_git_update.lock';
 
-function gitUpdateRun($command, $cwd) {
-    if (!is_dir($cwd)) {
-        return array('ok' => false, 'output' => 'Working directory not found: ' . $cwd);
+function gitUpdateHttpGet($url, $binary = false) {
+    $headers = array(
+        'User-Agent: RevolveX-Git-Update',
+        'Accept: application/vnd.github+json'
+    );
+
+    if (function_exists('curl_init')) {
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 15);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 120);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+        $body = curl_exec($ch);
+        $error = curl_error($ch);
+        $status = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($body === false || $status >= 400) {
+            return array('ok' => false, 'body' => '', 'message' => $error ?: 'HTTP ' . $status . ' from GitHub.');
+        }
+
+        return array('ok' => true, 'body' => $body, 'message' => '');
     }
 
-    $fullCommand = 'cd ' . escapeshellarg($cwd) . ' && ' . $command . ' 2>&1';
-
-    if (function_exists('exec')) {
-        $lines = array();
-        $exitCode = 0;
-        @exec($fullCommand, $lines, $exitCode);
-        return array(
-            'ok' => $exitCode === 0,
-            'output' => trim(implode("\n", $lines)),
-            'exit_code' => $exitCode
-        );
+    if (ini_get('allow_url_fopen')) {
+        $context = stream_context_create(array(
+            'http' => array(
+                'method' => 'GET',
+                'header' => implode("\r\n", $headers),
+                'timeout' => 120
+            )
+        ));
+        $body = @file_get_contents($url, false, $context);
+        if ($body === false) {
+            return array('ok' => false, 'body' => '', 'message' => 'Could not read GitHub URL with file_get_contents.');
+        }
+        return array('ok' => true, 'body' => $body, 'message' => '');
     }
 
-    if (function_exists('shell_exec')) {
-        $output = @shell_exec($fullCommand);
-        return array(
-            'ok' => $output !== null,
-            'output' => trim((string)$output),
-            'exit_code' => null
-        );
+    return array('ok' => false, 'body' => '', 'message' => 'PHP cannot download from GitHub. Enable cURL or allow_url_fopen.');
+}
+
+function gitUpdateGithubCommit($repoOwner, $repoName, $branch) {
+    $url = 'https://api.github.com/repos/' . rawurlencode($repoOwner) . '/' . rawurlencode($repoName) . '/commits/' . rawurlencode($branch);
+    $response = gitUpdateHttpGet($url);
+    if (!$response['ok']) {
+        return array('ok' => false, 'message' => $response['message']);
+    }
+
+    $data = json_decode($response['body'], true);
+    if (!is_array($data) || empty($data['sha'])) {
+        return array('ok' => false, 'message' => 'GitHub commit response was not valid.');
     }
 
     return array(
-        'ok' => false,
-        'output' => 'PHP command execution is disabled on this hosting account. Enable exec or shell_exec, or use cPanel Pull/Deploy.',
-        'exit_code' => null
+        'ok' => true,
+        'sha' => $data['sha'],
+        'short_sha' => substr($data['sha'], 0, 7),
+        'message' => isset($data['commit']['message']) ? strtok($data['commit']['message'], "\n") : '',
+        'author' => isset($data['commit']['author']['name']) ? $data['commit']['author']['name'] : '',
+        'date' => isset($data['commit']['author']['date']) ? $data['commit']['author']['date'] : ''
     );
 }
 
-function gitUpdateOutput($command, $cwd) {
-    $result = gitUpdateRun($command, $cwd);
-    return $result['output'];
-}
+function gitUpdateGithubHistory($repoOwner, $repoName, $branch) {
+    $url = 'https://api.github.com/repos/' . rawurlencode($repoOwner) . '/' . rawurlencode($repoName) . '/commits?sha=' . rawurlencode($branch) . '&per_page=8';
+    $response = gitUpdateHttpGet($url);
+    if (!$response['ok']) {
+        return array();
+    }
 
-function gitUpdateHistory($repoPath) {
-    $raw = gitUpdateOutput('git log -8 --date=format:"%d/%m/%Y %I:%M %p" --pretty=format:"%h%x1f%ad%x1f%an%x1f%s"', $repoPath);
+    $data = json_decode($response['body'], true);
+    if (!is_array($data)) {
+        return array();
+    }
+
     $rows = array();
-    foreach (explode("\n", $raw) as $line) {
-        $parts = explode("\x1f", $line);
-        if (count($parts) === 4) {
-            $rows[] = array(
-                'hash' => $parts[0],
-                'date' => $parts[1],
-                'author' => $parts[2],
-                'message' => $parts[3]
-            );
+    foreach ($data as $commit) {
+        if (empty($commit['sha'])) {
+            continue;
         }
+        $date = isset($commit['commit']['author']['date']) ? strtotime($commit['commit']['author']['date']) : false;
+        $rows[] = array(
+            'hash' => substr($commit['sha'], 0, 7),
+            'date' => $date ? date('d/m/Y h:i A', $date) : '',
+            'author' => isset($commit['commit']['author']['name']) ? $commit['commit']['author']['name'] : '',
+            'message' => isset($commit['commit']['message']) ? strtok($commit['commit']['message'], "\n") : ''
+        );
     }
     return $rows;
 }
 
-function gitUpdateStatusPayload($repoPath, $deployLog) {
-    $diagnostics = array(
-        'repo_path' => $repoPath,
-        'repo_exists' => is_dir($repoPath),
-        'deploy_path' => '/home/revolvexcom/public_html',
-        'deploy_exists' => is_dir('/home/revolvexcom/public_html'),
+function gitUpdateLastDeploy($deployLog) {
+    if (!is_file($deployLog)) {
+        return array('title' => 'No deploy recorded', 'detail' => '', 'sha' => '');
+    }
+
+    $lines = file($deployLog, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    if (empty($lines)) {
+        return array('title' => 'No deploy recorded', 'detail' => '', 'sha' => '');
+    }
+
+    $lastLine = end($lines);
+    $sha = '';
+    if (preg_match('/\|\s*([a-f0-9]{7,40})\s*$/i', $lastLine, $matches)) {
+        $sha = $matches[1];
+    }
+
+    return array('title' => 'Recorded', 'detail' => $lastLine, 'sha' => $sha);
+}
+
+function gitUpdateDiagnostics($deployPath, $fallbackRepoPath) {
+    return array(
+        'deploy_path' => $deployPath,
+        'deploy_exists' => is_dir($deployPath),
+        'deploy_writable' => is_writable($deployPath),
+        'repo_path' => $fallbackRepoPath,
+        'repo_exists' => is_dir($fallbackRepoPath),
+        'repo_writable' => is_dir($fallbackRepoPath) && is_writable($fallbackRepoPath),
+        'curl_available' => function_exists('curl_init'),
+        'allow_url_fopen' => (bool)ini_get('allow_url_fopen'),
+        'zip_available' => class_exists('ZipArchive'),
+        'temp_writable' => is_writable(sys_get_temp_dir()),
         'exec_available' => function_exists('exec'),
         'shell_exec_available' => function_exists('shell_exec')
     );
+}
 
-    $hash = gitUpdateOutput('git rev-parse --short HEAD', $repoPath);
-    $message = gitUpdateOutput('git log -1 --pretty=format:%s', $repoPath);
-    $local = gitUpdateOutput('git rev-parse HEAD', $repoPath);
-    $remoteLine = gitUpdateOutput('git ls-remote origin refs/heads/main', $repoPath);
-    $remoteParts = preg_split('/\s+/', trim($remoteLine));
-    $remote = isset($remoteParts[0]) ? $remoteParts[0] : '';
-    $status = 'Unknown';
-    $detail = 'Remote check unavailable.';
+function gitUpdateStatusPayload($repoOwner, $repoName, $branch, $deployPath, $fallbackRepoPath, $deployLog) {
+    $latest = gitUpdateGithubCommit($repoOwner, $repoName, $branch);
+    $lastDeploy = gitUpdateLastDeploy($deployLog);
 
-    if ($local !== '' && $remote !== '') {
-        if ($local === $remote) {
-            $status = 'Up to date';
-            $detail = 'Local repo matches origin/main.';
+    $currentHash = $lastDeploy['sha'] ? substr($lastDeploy['sha'], 0, 7) : 'Unknown';
+    $currentMessage = $lastDeploy['detail'];
+    $remoteStatus = 'Unknown';
+    $remoteDetail = $latest['ok'] ? 'GitHub latest: ' . $latest['short_sha'] . ' ' . $latest['message'] : $latest['message'];
+
+    if ($latest['ok']) {
+        if ($lastDeploy['sha'] && stripos($latest['sha'], $lastDeploy['sha']) === 0) {
+            $remoteStatus = 'Up to date';
+            $remoteDetail = 'Last deployed version matches GitHub main.';
         } else {
-            $status = 'Update available';
-            $detail = 'GitHub has changes not deployed locally.';
-        }
-    }
-
-    $lastDeployTitle = 'No deploy recorded';
-    $lastDeployDetail = '';
-    if (is_file($deployLog)) {
-        $lines = file($deployLog, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-        if (!empty($lines)) {
-            $lastDeployTitle = 'Recorded';
-            $lastDeployDetail = end($lines);
+            $remoteStatus = 'Update available';
+            $remoteDetail = 'GitHub has changes not recorded as deployed by this page.';
         }
     }
 
     return array(
         'success' => true,
-        'current' => array('short_hash' => $hash, 'message' => $message),
-        'remote' => array('status' => $status, 'detail' => $detail),
-        'last_deploy' => array('title' => $lastDeployTitle, 'detail' => $lastDeployDetail),
-        'history' => gitUpdateHistory($repoPath),
-        'diagnostics' => $diagnostics
+        'current' => array('short_hash' => $currentHash, 'message' => $currentMessage),
+        'remote' => array('status' => $remoteStatus, 'detail' => $remoteDetail),
+        'last_deploy' => array('title' => $lastDeploy['title'], 'detail' => $lastDeploy['detail']),
+        'history' => gitUpdateGithubHistory($repoOwner, $repoName, $branch),
+        'diagnostics' => gitUpdateDiagnostics($deployPath, $fallbackRepoPath)
     );
 }
 
+function gitUpdateRemoveDirectory($path) {
+    if (!is_dir($path)) {
+        return;
+    }
+    $items = scandir($path);
+    foreach ($items as $item) {
+        if ($item === '.' || $item === '..') {
+            continue;
+        }
+        $fullPath = $path . DIRECTORY_SEPARATOR . $item;
+        if (is_dir($fullPath) && !is_link($fullPath)) {
+            gitUpdateRemoveDirectory($fullPath);
+        } else {
+            @unlink($fullPath);
+        }
+    }
+    @rmdir($path);
+}
+
+function gitUpdateShouldSkip($relativePath) {
+    $relativePath = str_replace('\\', '/', trim($relativePath, '/'));
+    $skip = array('.git', '.cpanel.yml', '_notes', 'files', 'web_config_ft.php');
+    foreach ($skip as $blocked) {
+        if ($relativePath === $blocked || strpos($relativePath, $blocked . '/') === 0 || strpos($relativePath, '/_notes/') !== false) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function gitUpdateCopyDirectory($source, $destination, $baseSource, &$copied, &$skipped) {
+    if (!is_dir($destination)) {
+        if (!mkdir($destination, 0755, true) && !is_dir($destination)) {
+            throw new Exception('Could not create deploy directory: ' . $destination);
+        }
+    }
+
+    $items = scandir($source);
+    foreach ($items as $item) {
+        if ($item === '.' || $item === '..') {
+            continue;
+        }
+
+        $sourcePath = $source . DIRECTORY_SEPARATOR . $item;
+        $relativePath = ltrim(str_replace('\\', '/', substr($sourcePath, strlen($baseSource))), '/');
+
+        if (gitUpdateShouldSkip($relativePath)) {
+            $skipped++;
+            continue;
+        }
+
+        $destinationPath = $destination . DIRECTORY_SEPARATOR . $item;
+        if (is_dir($sourcePath)) {
+            gitUpdateCopyDirectory($sourcePath, $destinationPath, $baseSource, $copied, $skipped);
+        } else {
+            if (!copy($sourcePath, $destinationPath)) {
+                throw new Exception('Could not copy file: ' . $relativePath);
+            }
+            @chmod($destinationPath, 0644);
+            $copied++;
+        }
+    }
+}
+
+function gitUpdateFindExtractedAppPath($extractPath) {
+    $items = scandir($extractPath);
+    foreach ($items as $item) {
+        if ($item === '.' || $item === '..') {
+            continue;
+        }
+        $candidate = $extractPath . DIRECTORY_SEPARATOR . $item . DIRECTORY_SEPARATOR . 'app';
+        if (is_dir($candidate)) {
+            return $candidate;
+        }
+    }
+    return '';
+}
+
 if ($action === 'status') {
-    echo json_encode(gitUpdateStatusPayload($repoPath, $deployLog));
+    echo json_encode(gitUpdateStatusPayload($repoOwner, $repoName, $branch, $deployPath, $fallbackRepoPath, $deployLog));
     exit;
 }
 
@@ -137,45 +272,74 @@ if ($action === 'deploy') {
 
     file_put_contents($lockFile, (string)time());
     $outputParts = array();
+    $tempRoot = sys_get_temp_dir() . '/revolvex_deploy_' . date('YmdHis') . '_' . mt_rand(1000, 9999);
+    $zipFile = $tempRoot . '/revolvex.zip';
+    $extractPath = $tempRoot . '/extract';
 
     try {
-        if (!is_dir($repoPath) || !is_dir($deployPath)) {
-            throw new Exception('Repository or deploy path does not exist.');
+        if (!is_dir($deployPath) || !is_writable($deployPath)) {
+            throw new Exception('Deploy path is missing or not writable: ' . $deployPath);
+        }
+        if (!class_exists('ZipArchive')) {
+            throw new Exception('PHP ZipArchive is not enabled. Enable the zip PHP extension in cPanel.');
+        }
+        if (!mkdir($tempRoot, 0755, true) || !mkdir($extractPath, 0755, true)) {
+            throw new Exception('Could not create temporary deploy folder.');
         }
 
-        $outputParts[] = '$ git pull --ff-only origin main';
-        $pullResult = gitUpdateRun('git pull --ff-only origin main', $repoPath);
-        $outputParts[] = $pullResult['output'];
-        if (!$pullResult['ok']) {
-            throw new Exception('Git pull failed. ' . $pullResult['output']);
+        $latest = gitUpdateGithubCommit($repoOwner, $repoName, $branch);
+        if (!$latest['ok']) {
+            throw new Exception('Could not check GitHub latest commit. ' . $latest['message']);
         }
 
-        $outputParts[] = '$ rsync app/ to public_html/';
-        $rsyncCommand = '/bin/rsync -av --exclude=".git" --exclude=".cpanel.yml" --exclude="_notes" --exclude="*/_notes" --exclude="files/" --exclude="web_config_ft.php" ' . escapeshellarg($repoPath . '/app/') . ' ' . escapeshellarg($deployPath . '/');
-        $rsyncResult = gitUpdateRun($rsyncCommand, $repoPath);
-        $outputParts[] = $rsyncResult['output'];
-        if (!$rsyncResult['ok']) {
-            throw new Exception('Deploy copy failed. ' . $rsyncResult['output']);
+        $zipUrl = 'https://github.com/' . rawurlencode($repoOwner) . '/' . rawurlencode($repoName) . '/archive/refs/heads/' . rawurlencode($branch) . '.zip';
+        $outputParts[] = 'Downloading GitHub ZIP: ' . $zipUrl;
+        $zipResponse = gitUpdateHttpGet($zipUrl, true);
+        if (!$zipResponse['ok']) {
+            throw new Exception('GitHub ZIP download failed. ' . $zipResponse['message']);
+        }
+        file_put_contents($zipFile, $zipResponse['body']);
+
+        $outputParts[] = 'Extracting ZIP.';
+        $zip = new ZipArchive();
+        if ($zip->open($zipFile) !== true) {
+            throw new Exception('Could not open downloaded GitHub ZIP.');
+        }
+        $zip->extractTo($extractPath);
+        $zip->close();
+
+        $appSource = gitUpdateFindExtractedAppPath($extractPath);
+        if ($appSource === '') {
+            throw new Exception('Downloaded ZIP did not contain an app folder.');
         }
 
-        $hash = gitUpdateOutput('git rev-parse --short HEAD', $repoPath);
-        $logLine = date('Y-m-d H:i:s') . ' | user_id=' . (int)$_SESSION['session_user_id'] . ' | ' . $hash;
-        file_put_contents($deployLog, $logLine . PHP_EOL, FILE_APPEND);
+        $copied = 0;
+        $skipped = 0;
+        $outputParts[] = 'Copying app folder to public_html.';
+        gitUpdateCopyDirectory($appSource, $deployPath, $appSource, $copied, $skipped);
+        $outputParts[] = 'Copied files: ' . $copied;
+        $outputParts[] = 'Skipped protected paths: ' . $skipped;
 
+        $logLine = date('Y-m-d H:i:s') . ' | user_id=' . (int)$_SESSION['session_user_id'] . ' | ' . $latest['sha'];
+        @file_put_contents($deployLog, $logLine . PHP_EOL, FILE_APPEND);
+
+        gitUpdateRemoveDirectory($tempRoot);
         @unlink($lockFile);
+
         echo json_encode([
             'success' => true,
-            'message' => 'Git pull and deploy completed.',
-            'output' => implode("\n\n", $outputParts),
-            'status' => gitUpdateStatusPayload($repoPath, $deployLog)
+            'message' => 'GitHub ZIP deploy completed.',
+            'output' => implode("\n", $outputParts),
+            'status' => gitUpdateStatusPayload($repoOwner, $repoName, $branch, $deployPath, $fallbackRepoPath, $deployLog)
         ]);
         exit;
     } catch (Exception $e) {
+        gitUpdateRemoveDirectory($tempRoot);
         @unlink($lockFile);
         echo json_encode([
             'success' => false,
             'message' => $e->getMessage(),
-            'output' => implode("\n\n", $outputParts)
+            'output' => implode("\n", $outputParts)
         ]);
         exit;
     }

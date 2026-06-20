@@ -38,8 +38,14 @@ function LoadGitUpdateStatus() {
                     'Diagnostics\n' +
                     'Repo path: ' + response.diagnostics.repo_path + '\n' +
                     'Repo exists: ' + response.diagnostics.repo_exists + '\n' +
+                    'Repo writable: ' + response.diagnostics.repo_writable + '\n' +
                     'Deploy path: ' + response.diagnostics.deploy_path + '\n' +
                     'Deploy exists: ' + response.diagnostics.deploy_exists + '\n' +
+                    'Deploy writable: ' + response.diagnostics.deploy_writable + '\n' +
+                    'cURL available: ' + response.diagnostics.curl_available + '\n' +
+                    'allow_url_fopen: ' + response.diagnostics.allow_url_fopen + '\n' +
+                    'ZipArchive available: ' + response.diagnostics.zip_available + '\n' +
+                    'Temp writable: ' + response.diagnostics.temp_writable + '\n' +
                     'exec available: ' + response.diagnostics.exec_available + '\n' +
                     'shell_exec available: ' + response.diagnostics.shell_exec_available
                 );
@@ -53,12 +59,8 @@ function LoadGitUpdateStatus() {
 }
 
 function RunGitUpdate() {
-    if (!confirm('Pull latest GitHub changes and deploy to public_html?')) {
-        return;
-    }
-
     $('#git_update_button').prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span> Updating...');
-    $('#git_update_message').html('<div class="alert alert-info">Git update running. Please wait...</div>');
+    $('#git_update_message').html('<div class="alert alert-info">GitHub download and deploy running. Please wait...</div>');
 
     $.ajax({
         url: gitUpdateCrudUrl,
@@ -80,7 +82,7 @@ function RunGitUpdate() {
             $('#git_deploy_output').text(xhr.responseText || xhr.statusText || 'No server response');
         },
         complete: function() {
-            $('#git_update_button').prop('disabled', false).html('<i class="bx bx-cloud-download"></i> Pull & Deploy');
+            $('#git_update_button').prop('disabled', false).html('<i class="bx bx-cloud-download"></i> Download & Deploy');
         }
     });
 }
