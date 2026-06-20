@@ -299,6 +299,55 @@ if (isset($_POST['action']) && $_POST['action'] === 'send_purchase_order_email')
     sendPurchaseOrderEmail($order_id, $pdfPath, $email_to1, $email_to2);
 }
 
+function purchaseFilesTableExists(PDO $conn) {
+    static $exists = null;
+    if ($exists !== null) {
+        return $exists;
+    }
+
+    $stmt = $conn->prepare("SHOW TABLES LIKE 'tblPurchaseFiles'");
+    $stmt->execute();
+    $exists = (bool)$stmt->fetch(PDO::FETCH_NUM);
+    return $exists;
+}
+
+function savePurchaseEmailAttachment(PDO $conn, $pid, $company_id, $user_id, $tmpName, $originalName) {
+    if (!purchaseFilesTableExists($conn)) {
+        return false;
+    }
+
+    $extension = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
+    $safeName = preg_replace('/[^A-Za-z0-9._-]+/', '_', basename($originalName));
+    if ($safeName === '' || $safeName === '_' || $safeName === '.' || $safeName === '..') {
+        $safeName = 'attachment.' . $extension;
+    }
+
+    $storedName = bin2hex(random_bytes(16)) . '.' . $extension;
+    $remoteFile = 'purchase_files/' . $storedName;
+    $uploadResult = uploadFileToS3($tmpName, $remoteFile);
+
+    if (is_string($uploadResult) && strpos($uploadResult, 'Error:') === 0) {
+        error_log('Failed to save purchase email attachment: ' . $uploadResult);
+        return false;
+    }
+
+    $stmt = $conn->prepare("
+        INSERT INTO tblPurchaseFiles (pid, company_id, type_id, path, filename, description, added, user_id)
+        VALUES (:pid, :company_id, :type_id, :path, :filename, :description, :added, :user_id)
+    ");
+    $stmt->bindValue(':pid', $pid, PDO::PARAM_INT);
+    $stmt->bindValue(':company_id', $company_id, PDO::PARAM_INT);
+    $stmt->bindValue(':type_id', 15, PDO::PARAM_INT);
+    $stmt->bindValue(':path', 'purchase_files');
+    $stmt->bindValue(':filename', $storedName);
+    $stmt->bindValue(':description', $safeName);
+    $stmt->bindValue(':added', time(), PDO::PARAM_INT);
+    $stmt->bindValue(':user_id', $user_id, PDO::PARAM_INT);
+    $stmt->execute();
+
+    return true;
+}
+
 function sendPurchaseOrderEmail($order_id, $pdfPath, $email_to1, $email_to2 = null) {
     $company_id   = $_SESSION['session_company_id'];
     $companyName  = getTableField('company_name', 'tblCompany', $company_id);
@@ -322,6 +371,10 @@ function sendPurchaseOrderEmail($order_id, $pdfPath, $email_to1, $email_to2 = nu
     $mail = newSystemMailer($companyName, $replyToEmail);
 
     try {
+        $database = new Database();
+        $conn = $database->connect();
+        $savedAttachmentNames = array();
+
         // TO recipients: customer + session user (internal copy as TO)
         if (!empty($email_extra)) $mail->addAddress($email_extra);
         $mail->addAddress($email_to1);
@@ -361,6 +414,9 @@ function sendPurchaseOrderEmail($order_id, $pdfPath, $email_to1, $email_to2 = nu
 
                 $safeName = preg_replace('/[^A-Za-z0-9._-]+/', '_', basename($name));
                 $mail->addAttachment($_FILES['attachments']['tmp_name'][$index], $safeName);
+                if (savePurchaseEmailAttachment($conn, (int)$order_id, (int)$company_id, (int)$_SESSION['session_user_id'], $_FILES['attachments']['tmp_name'][$index], $name)) {
+                    $savedAttachmentNames[] = $safeName;
+                }
             }
         }
 
@@ -377,6 +433,17 @@ function sendPurchaseOrderEmail($order_id, $pdfPath, $email_to1, $email_to2 = nu
             $_SESSION['session_user_id'],
             0
         );
+
+        if (!empty($savedAttachmentNames)) {
+            addPurchaseActivity(
+                $order_id,
+                $company_id,
+                5,
+                'Saved emailed PO attachment(s): ' . implode(', ', $savedAttachmentNames),
+                $_SESSION['session_user_id'],
+                0
+            );
+        }
 
         echo json_encode(['success' => true, 'message' => 'Email sent successfully!']);
     } catch (Exception $e) {

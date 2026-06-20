@@ -41,6 +41,19 @@ function purchaseConfirmationColumnsExist($conn) {
         && purchaseOrderColumnExists($conn, 'confirmation_uploaded_at');
 }
 
+function purchaseFilesTableExists($conn) {
+    static $exists = null;
+    if ($exists !== null) {
+        return $exists;
+    }
+
+    $stmt = $conn->prepare("SHOW TABLES LIKE 'tblPurchaseFiles'");
+    $stmt->execute();
+    $exists = (bool)$stmt->fetch(PDO::FETCH_NUM);
+
+    return $exists;
+}
+
 function getPurchaseStatusActivityLabel($status_id, $company_id) {
     if (empty($status_id)) {
         return 'Not set';
@@ -166,6 +179,7 @@ function purchaseProcessActivityAliases() {
 
 function getPurchaseProcessActivity($conn, $pid, $company_id) {
     $aliases = purchaseProcessActivityAliases();
+    $activityTimestamps = array();
     $history = array(
         'purchase_delivery_docket_printed' => null,
         'purchase_confirmation_requested' => null,
@@ -177,7 +191,7 @@ function getPurchaseProcessActivity($conn, $pid, $company_id) {
 
     if (purchaseConfirmationColumnsExist($conn)) {
         $metaStmt = $conn->prepare("
-            SELECT order_confirmation_required, order_confirmation_received, estimated_arrival_date, confirmation_file_name, order_date
+            SELECT order_confirmation_required, order_confirmation_received, estimated_arrival_date, confirmation_file_name
             FROM tblPurchaseOrders
             WHERE id = :pid
               AND company_id = :company_id
@@ -194,10 +208,7 @@ function getPurchaseProcessActivity($conn, $pid, $company_id) {
                 'confirmation_received' => (int)$meta['order_confirmation_received'],
                 'estimated_arrival_date_input' => !empty($meta['estimated_arrival_date']) ? date('Y-m-d', (int)$meta['estimated_arrival_date']) : '',
                 'confirmation_file_name' => $meta['confirmation_file_name'],
-                'confirmation_overdue' => !empty($meta['order_confirmation_required'])
-                    && empty($meta['order_confirmation_received'])
-                    && !empty($meta['order_date'])
-                    && ((int)$meta['order_date'] < (time() - (48 * 60 * 60)))
+                'confirmation_overdue' => false
             );
         }
     }
@@ -247,11 +258,26 @@ function getPurchaseProcessActivity($conn, $pid, $company_id) {
         }
 
         if (!empty($workflowType) && array_key_exists($workflowType, $history) && $history[$workflowType] === null) {
+            $activityTimestamps[$workflowType] = (int)$row['action_date'];
             $history[$workflowType] = array(
                 'description' => $row['description'],
                 'date' => date('d/m/Y g:i A', (int)$row['action_date']),
                 'user' => getUserFullName($row['user_id'])
             );
+        }
+    }
+
+    if (!empty($history['meta']['confirmation_required']) && empty($history['meta']['confirmation_received'])) {
+        $dueBase = 0;
+        foreach (array('purchase_order_emailed', 'purchase_order_printed', 'purchase_confirmation_requested') as $type) {
+            if (!empty($activityTimestamps[$type])) {
+                $dueBase = max($dueBase, (int)$activityTimestamps[$type]);
+            }
+        }
+
+        if ($dueBase > 0) {
+            $history['meta']['confirmation_due_at'] = date('d/m/Y g:i A', $dueBase + (48 * 60 * 60));
+            $history['meta']['confirmation_overdue'] = ($dueBase < (time() - (48 * 60 * 60)));
         }
     }
 
@@ -326,11 +352,28 @@ if (isset($_POST['action']) && $_POST['action'] === 'save_purchase_confirmation'
         $uploadResult = uploadFileToS3($_FILES['confirmation_file']['tmp_name'], $fileKey);
 
         if (is_string($uploadResult) && strpos($uploadResult, 'Error:') === 0) {
+            error_log("Could not upload purchase confirmation for PO {$pid}: " . $uploadResult);
             echo json_encode(['success' => false, 'message' => 'Could not upload confirmation file.']);
             exit;
         }
 
         $uploadedAt = time();
+
+        if (purchaseFilesTableExists($conn)) {
+            $filesStmt = $conn->prepare("
+                INSERT INTO tblPurchaseFiles (pid, company_id, type_id, path, filename, description, added, user_id)
+                VALUES (:pid, :company_id, :type_id, :path, :filename, :description, :added, :user_id)
+            ");
+            $filesStmt->bindValue(':pid', $pid, PDO::PARAM_INT);
+            $filesStmt->bindValue(':company_id', $company_id, PDO::PARAM_INT);
+            $filesStmt->bindValue(':type_id', 16, PDO::PARAM_INT);
+            $filesStmt->bindValue(':path', 'purchase_confirmations');
+            $filesStmt->bindValue(':filename', basename($fileKey));
+            $filesStmt->bindValue(':description', $fileName);
+            $filesStmt->bindValue(':added', $uploadedAt, PDO::PARAM_INT);
+            $filesStmt->bindValue(':user_id', $_SESSION['session_user_id'], PDO::PARAM_INT);
+            $filesStmt->execute();
+        }
     }
 
     $confirmedStatus = findPurchaseStatusIdByNames($conn, $company_id, array('Confirmed'));
@@ -686,6 +729,17 @@ if (isset($data_raw['action']) && $data_raw['action'] == 'create_purchase') {
     if (executeDatabaseQuery($conn, $query, $bindings, $rowCount)) {
         $pid = $conn->lastInsertId(); // Retrieve the last inserted ID
         if ($rowCount > 0) {
+            if (purchaseOrderColumnExists($conn, 'order_confirmation_required')) {
+                $requiredStmt = $conn->prepare("
+                    UPDATE tblPurchaseOrders
+                    SET order_confirmation_required = 1
+                    WHERE id = :pid
+                      AND company_id = :company_id
+                ");
+                $requiredStmt->bindValue(':pid', $pid, PDO::PARAM_INT);
+                $requiredStmt->bindValue(':company_id', $_SESSION['session_company_id'], PDO::PARAM_INT);
+                $requiredStmt->execute();
+            }
             addPurchaseActivity($pid, $_SESSION['session_company_id'], 5, 'New purchase created', $_SESSION['session_user_id'], 0);
             echo json_encode(['success' => true, 'message' => 'Order created successfully.', 'pid' => $pid]);
         } else {

@@ -27,6 +27,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['tab_id']) && $_POST['t
                                             OR id LIKE :searchQuery 
                                             OR vendor_phone LIKE :searchQuery 
                                             OR order_notes LIKE :searchQuery
+                                            OR additional_notes LIKE :searchQuery
                                             OR ven_inv_number LIKE :searchQuery
                                             OR delivery_address_line1 LIKE :searchQuery
                                             OR invoice_ref LIKE :searchQuery
@@ -59,6 +60,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['tab_id']) && $_POST['t
         $statement->bindValue(':recordsPerPage', $recordsPerPage, PDO::PARAM_INT);
         $statement->execute();
         $rowCount = $statement->rowCount();
+
+        $confirmationActivityStmt = $conn->prepare("
+            SELECT MAX(action_date) AS action_date
+            FROM tblPurchaseActivity
+            WHERE pid = :pid
+              AND company_id = :company_id
+              AND (
+                    description LIKE 'Email sent: Purchase order%'
+                 OR description LIKE 'Printed: Purchase order%'
+                 OR description LIKE 'Printed Purchase order%'
+                 OR description LIKE 'Purchase order confirmation requested%'
+              )
+        ");
 
         $output = '<style>
             .purchase-filter-bar {
@@ -213,7 +227,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['tab_id']) && $_POST['t
                             <th scope="col">Vendor</th>
                             <th scope="col"><button type="button" class="btn btn-link p-0 text-decoration-none purchase-sort-button" onclick="sortPurchasesBy(\'date\')">Date <i class="bi bi-arrow-down-up"></i></button></th>
                             <th scope="col"><button type="button" class="btn btn-link p-0 text-decoration-none purchase-sort-button" onclick="sortPurchasesBy(\'required\')">Required <i class="bi bi-arrow-down-up"></i></button></th>
-                            <th scope="col">Details</th>
+                            <th scope="col">ETA</th>
+                            <th scope="col">Confirmation</th>
+                            <th scope="col">Internal Notes</th>
                             <th scope="col">Status</th>
                         </tr>
                     </thead>
@@ -223,9 +239,46 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['tab_id']) && $_POST['t
                 $orderDate = !empty($row['order_date']) ? date_c($row['order_date']) : '-';
                 $orderRequired = !empty($row['order_date_required']) ? date_c($row['order_date_required']) : '-';
                 $statusDescription = getTabFieCol('description','tblPurchaseStatus', 'id', $row['order_status_id'], $_SESSION['session_company_id']);
+                $displayStatus = $statusDescription;
                 $statusLower = strtolower((string)$statusDescription);
-                $statusStyle = '--status-soft:#eef0ff;--status-border:#dfe3ff;--status-color:#4154f1;--purchase-accent:#4154f1;';
-                if (strpos($statusLower, 'order') !== false) {
+                $confirmationRequired = array_key_exists('order_confirmation_required', $row) ? (int)$row['order_confirmation_required'] : 0;
+                $confirmationReceived = array_key_exists('order_confirmation_received', $row) ? (int)$row['order_confirmation_received'] : 0;
+                $eta = (array_key_exists('estimated_arrival_date', $row) && !empty($row['estimated_arrival_date'])) ? date_c($row['estimated_arrival_date']) : '-';
+                $confirmationText = 'Not required';
+                $confirmationClass = 'text-muted';
+                $confirmationDue = '';
+                $confirmationOverdue = false;
+
+                if ($confirmationRequired) {
+                    $confirmationActivityStmt->bindValue(':pid', (int)$row['id'], PDO::PARAM_INT);
+                    $confirmationActivityStmt->bindValue(':company_id', (int)$_SESSION['session_company_id'], PDO::PARAM_INT);
+                    $confirmationActivityStmt->execute();
+                    $activityRow = $confirmationActivityStmt->fetch(PDO::FETCH_ASSOC);
+                    $dueBase = !empty($activityRow['action_date']) ? (int)$activityRow['action_date'] : 0;
+                    if ($dueBase > 0) {
+                        $confirmationDue = date_c($dueBase + (48 * 60 * 60));
+                        $confirmationOverdue = !$confirmationReceived && $dueBase < (time() - (48 * 60 * 60));
+                    }
+                    if ($confirmationReceived) {
+                        $confirmationText = 'Confirmed';
+                        $confirmationClass = 'text-success';
+                    } elseif ($confirmationOverdue) {
+                        $confirmationText = 'Overdue';
+                        $confirmationClass = 'text-danger fw-bold';
+                        $displayStatus = 'Overdue';
+                        $statusLower = 'overdue';
+                    } else {
+                        $confirmationText = 'Not Confirmed';
+                        $confirmationClass = 'text-warning fw-bold';
+                    }
+                }
+
+                $statusStyle = '--status-soft:#f8fafc;--status-border:#e2e8f0;--status-color:#475569;--purchase-accent:#cbd5e1;';
+                if (strpos($statusLower, 'overdue') !== false) {
+                    $statusStyle = '--status-soft:#ffecec;--status-border:#ffc6c6;--status-color:#c62828;--purchase-accent:#dc3545;';
+                } elseif (strpos($statusLower, 'order') !== false) {
+                    $statusStyle = '--status-soft:#fff8dc;--status-border:#ffe08a;--status-color:#9a6700;--purchase-accent:#f7c948;';
+                } elseif (strpos($statusLower, 'confirm') !== false) {
                     $statusStyle = '--status-soft:#fff4e8;--status-border:#ffd9af;--status-color:#c65f00;--purchase-accent:#ff9f43;';
                 } elseif (strpos($statusLower, 'receive') !== false || strpos($statusLower, 'stock') !== false) {
                     $statusStyle = '--status-soft:#e8f8ef;--status-border:#c7efd6;--status-color:#1f8f4d;--purchase-accent:#2eca6a;';
@@ -234,14 +287,18 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['tab_id']) && $_POST['t
                 }
                 $delivery = trim($row['delivery_address_line1'] . (!empty($row['delivery_address_suburb']) ? ', ' . $row['delivery_address_suburb'] : ''), ' ,');
                 $reference = !empty($row['ven_inv_number']) ? 'Vendor Inv: ' . $row['ven_inv_number'] : (!empty($row['invoice_ref']) ? 'Invoice Ref: ' . $row['invoice_ref'] : '');
+                $internalNotes = trim((string)($row['additional_notes'] ?? ''));
+                $supplierNotes = trim((string)($row['order_notes'] ?? ''));
 
                 $output .= '<tr onclick="redirectToPurchase(' . (int)$row['id'] . ')" style="' . $statusStyle . '">';
                 $output .= '<td><span class="purchase-id-badge">#' . htmlspecialchars($row['id']) . '</span></td>';
                 $output .= '<td><div class="purchase-main">' . htmlspecialchars($row['vendor_name']) . '</div><div class="purchase-sub">' . htmlspecialchars($row['vendor_phone']) . '</div></td>';
                 $output .= '<td><div class="purchase-date-label">Created</div><div class="purchase-date-block">' . htmlspecialchars($orderDate) . '</div></td>';
                 $output .= '<td><div class="purchase-date-label">Required</div><div class="purchase-date-block">' . htmlspecialchars($orderRequired) . '</div></td>';
-                $output .= '<td><div class="purchase-main">' . htmlspecialchars($reference) . '</div><div class="purchase-sub">' . htmlspecialchars($delivery) . '</div></td>';
-                $output .= '<td><span class="purchase-status-pill">' . htmlspecialchars($statusDescription) . '</span></td>';
+                $output .= '<td><div class="purchase-date-label">ETA</div><div class="purchase-date-block">' . htmlspecialchars($eta) . '</div></td>';
+                $output .= '<td><div class="' . $confirmationClass . '">' . htmlspecialchars($confirmationText) . '</div><div class="purchase-sub">' . ($confirmationDue ? 'Due ' . htmlspecialchars($confirmationDue) : '') . '</div></td>';
+                $output .= '<td><div class="purchase-main">' . htmlspecialchars($internalNotes ?: $reference) . '</div><div class="purchase-sub">' . htmlspecialchars($supplierNotes ?: $delivery) . '</div></td>';
+                $output .= '<td><span class="purchase-status-pill">' . htmlspecialchars($displayStatus) . '</span></td>';
                 $output .= '</tr>';
             }
 

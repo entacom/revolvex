@@ -429,7 +429,9 @@ function SendEmailOrder() {
                             $('#email_purchase_order').modal('hide'); // Close the modal
                             $('#purchase_email_attachments').val('');
                             if ($('#ProcessPurchaseModal').hasClass('show')) {
-                                loadProcessPurchaseActivity();
+                                ensurePurchaseConfirmationRequiredIfChecked(function() {
+                                    loadProcessPurchaseActivity();
+                                });
                             }
                         } else {
                             alert("Error: " + res.message);
@@ -470,20 +472,25 @@ function OpenProcessPurchaseModal(processPid) {
 
 function renderProcessPurchaseActivity(history) {
     const labels = purchaseProcessLabels();
-    const confirmationRequested = history
+    const meta = history && history.meta ? history.meta : {};
+    const hasConfirmationMeta = Object.prototype.hasOwnProperty.call(meta, 'confirmation_required');
+    const confirmationRequestedActivity = history
         && history.purchase_confirmation_requested
         && !String(history.purchase_confirmation_requested.description || '').toLowerCase().includes('cleared');
+    const confirmationRequested = hasConfirmationMeta
+        ? Number(meta.confirmation_required || 0) === 1 || confirmationRequestedActivity
+        : true;
     const confirmationReceived = history && history.purchase_confirmation_received;
-    const confirmationOverdue = history
-        && history.purchase_confirmation_requested
-        && history.purchase_confirmation_requested.confirmation_overdue
-        && !confirmationReceived;
+    const confirmationOverdue = !!(meta.confirmation_overdue || (history && history.purchase_confirmation_requested && history.purchase_confirmation_requested.confirmation_overdue)) && !confirmationReceived;
 
     $('#purchase_confirmation_requested_checkbox').prop('checked', !!confirmationRequested);
-    $('#purchase_confirmation_overdue_notice').toggleClass('d-none', !confirmationOverdue);
+    const dueText = meta.confirmation_due_at ? ' Due by ' + meta.confirmation_due_at + '.' : '';
+    $('#purchase_confirmation_overdue_notice')
+        .toggleClass('d-none', !confirmationOverdue)
+        .text('Confirmation has not been received within 48 hours.' + dueText);
     if (history && history.meta) {
-        $('#purchase_confirmation_eta').val(history.meta.estimated_arrival_date_input || '');
-        $('#purchase_confirmation_file_summary').text(history.meta.confirmation_file_name ? 'Uploaded: ' + history.meta.confirmation_file_name : '');
+        $('#purchase_confirmation_eta').val(meta.estimated_arrival_date_input || '');
+        $('#purchase_confirmation_file_summary').text(meta.confirmation_file_name ? 'Uploaded: ' + meta.confirmation_file_name : '');
     }
 
     $('[data-purchase-process-summary]').each(function() {
@@ -504,6 +511,17 @@ function renderProcessPurchaseActivity(history) {
             .addClass('text-success')
             .html('<i class="bx bx-check-circle"></i> ' + label + ': ' + item.date + ' by ' + item.user);
     });
+}
+
+function ensurePurchaseConfirmationRequiredIfChecked(callback) {
+    if (!$('#purchase_confirmation_requested_checkbox').is(':checked')) {
+        if (typeof callback === 'function') {
+            callback();
+        }
+        return;
+    }
+
+    recordProcessPurchaseActivity('purchase_confirmation_requested', callback);
 }
 
 function loadProcessPurchaseActivity() {
@@ -642,8 +660,10 @@ function ProcessPurchasePrintDelivery() {
 }
 
 function ProcessPurchasePrintOrder() {
-    recordProcessPurchaseActivity('purchase_order_printed', function() {
-        loadProcessPurchaseActivity();
+    ensurePurchaseConfirmationRequiredIfChecked(function() {
+        recordProcessPurchaseActivity('purchase_order_printed', function() {
+            loadProcessPurchaseActivity();
+        });
     });
     PrintPurchaseOrder(getProcessPurchaseId());
 }

@@ -79,7 +79,7 @@
                             <div class="small text-danger d-none" id="purchase_confirmation_overdue_notice">Confirmation has not been received within 48 hours.</div>
                         </div>
                         <div class="form-check form-switch m-0">
-                            <input class="form-check-input" type="checkbox" id="purchase_confirmation_requested_checkbox" onchange="ProcessPurchaseConfirmationChanged()">
+                            <input class="form-check-input" type="checkbox" id="purchase_confirmation_requested_checkbox" onchange="ProcessPurchaseConfirmationChanged()" checked>
                         </div>
                     </div>
                     <div class="list-group-item d-flex justify-content-between align-items-start gap-3">

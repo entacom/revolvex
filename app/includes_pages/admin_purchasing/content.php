@@ -510,6 +510,17 @@ if ($sub_tab_id == 'purchase_activity') {
     $result->bindParam(':company_id', $_SESSION['session_company_id']);
     $result->execute();
 
+    $purchaseFiles = array();
+    $filesTableStmt = $conn->prepare("SHOW TABLES LIKE 'tblPurchaseFiles'");
+    $filesTableStmt->execute();
+    if ($filesTableStmt->fetch(PDO::FETCH_NUM)) {
+        $filesStmt = $conn->prepare("SELECT * FROM tblPurchaseFiles WHERE pid = :pid AND company_id = :company_id ORDER BY added DESC, id DESC");
+        $filesStmt->bindParam(':pid', $_POST['pid']);
+        $filesStmt->bindParam(':company_id', $_SESSION['session_company_id']);
+        $filesStmt->execute();
+        $purchaseFiles = $filesStmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
     $data = '
         <div class="row dashboard">
             <div class="col-lg-12">
@@ -537,6 +548,21 @@ if ($sub_tab_id == 'purchase_activity') {
         $data .= '<div class="col-md-1 sm-text"><button class="btn btn-sm btn-outline-secondary" onclick="EditPurchaseActivity(' . $row['id'] . ')"><i class="bx bx-edit"></i></button><button class="btn btn-sm btn-outline-secondary" onclick="delPurchaseActivity(' . $row['id'] . ')"><i class="bx bxs-trash"></i></button></div>';
         $data .= '</div>';
         $data .= '</div>';
+    }
+
+    $data .= '</div>';
+
+    if (!empty($purchaseFiles)) {
+        $data .= '<div class="mt-4"><h6 class="mb-2">Saved PO Files</h6><div class="list-group">';
+        foreach ($purchaseFiles as $file) {
+            $fileFolder = (!empty($file['path']) && $file['path'] !== 'aws_S3_bucket') ? trim($file['path'], '/') : 'purchase_files';
+            $downloadUrl = generatePreSignedUrl($fileFolder . '/' . $file['filename'], $file['description']);
+            $data .= '<a class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" target="_blank" href="' . htmlspecialchars($downloadUrl, ENT_QUOTES, 'UTF-8') . '">';
+            $data .= '<span>' . htmlspecialchars($file['description']) . '</span>';
+            $data .= '<span class="small text-muted">' . (!empty($file['added']) ? date_c($file['added']) : '') . '</span>';
+            $data .= '</a>';
+        }
+        $data .= '</div></div>';
     }
 
     $data .= '</div></div></div></div></div>';
