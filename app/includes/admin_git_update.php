@@ -13,6 +13,7 @@ if (!in_array($_SESSION['session_group_id'], [11, 12, 13])) {
                 <div class="git-update-kicker">Deployment</div>
                 <h4>Git Update</h4>
                 <p>Pull the latest GitHub changes into the cPanel repo and deploy the app folder to public_html.</p>
+                <p class="git-update-muted">Deployment test: 20/06/2026 8:40 PM.</p>
             </div>
             <button type="button" id="git_update_button" class="btn btn-success" onclick="RunGitUpdate()">
                 <i class="bx bx-cloud-download"></i> Pull & Deploy
