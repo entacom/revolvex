@@ -363,6 +363,12 @@ if ($action === 'deploy') {
         $skipped = 0;
         $removedFiles = 0;
         $removedDirs = 0;
+        $legacyAppPath = $deployPath . DIRECTORY_SEPARATOR . 'app';
+        if (is_dir($legacyAppPath)) {
+            $outputParts[] = 'Removing legacy nested public_html/app folder.';
+            gitUpdateRemoveDirectory($legacyAppPath);
+            $removedDirs++;
+        }
         $outputParts[] = 'Cleaning protected legacy files from public_html.';
         gitUpdateCleanProtectedPublicFiles($deployPath, $removedFiles, $removedDirs);
         $outputParts[] = 'Removed protected files: ' . $removedFiles;
