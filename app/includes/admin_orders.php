@@ -94,8 +94,8 @@
     z-index: 3000;
 }
 </style>
-<link rel="stylesheet" href="https://unpkg.com/dropzone@5/dist/min/dropzone.min.css" type="text/css" />
-<script src="https://unpkg.com/dropzone@5/dist/min/dropzone.min.js"></script>
+<link rel="stylesheet" href="assets/vendor/dropzone/dropzone.min.css" type="text/css" />
+<script src="assets/vendor/dropzone/dropzone.min.js"></script>
 
 
 <main id="main" class="main order-page-main">

@@ -71,7 +71,7 @@ else {
   <link href="assets/css/style.css" rel="stylesheet">
   <link href="assets/css/custom.css?v=<? echo date('h:i');?>" rel="stylesheet">
 
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.4/jquery.min.js"></script>
+<script src="assets/vendor/jquery/jquery.min.js"></script>
   <script src="assets/vendor/jquery/jquery-ui.min.js"></script>
   <link rel="stylesheet" href="assets/vendor/jquery/jquery-ui.min.css">
 <!-- Custom Main JS File -->
