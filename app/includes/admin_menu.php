@@ -1,4 +1,4 @@
-﻿<header id="header" class="header fixed-top d-flex align-items-center">
+<header id="header" class="header fixed-top d-flex align-items-center">
     <div class="d-flex align-items-center justify-content-between">
         <a href="/" class="logo d-flex align-items-center">
             <img src="<?php echo getTableField('company_image_path','tblCompany', $_SESSION['session_company_id']); ?>" alt="">
