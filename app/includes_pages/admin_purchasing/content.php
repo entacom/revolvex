@@ -92,6 +92,12 @@ if ($tab_id == 'home') {
                                     <input type="text" name="order_date_required" id="order_date_required" class="order_date_required_picker form-control-sm form-control"> 
                                 </div>
                             </div>
+                            <div class="row mb-0">
+                                <label for="inputEmail" class="col-sm-4 col-form-label">Est Arrival:</label>
+                                <div class="col-sm-8">
+                                    <input type="text" name="estimated_arrival_date" id="estimated_arrival_date" class="estimated_arrival_date_picker form-control-sm form-control"> 
+                                </div>
+                            </div>
                             
                             <div class="row mb-0">
                                 <label for="inputEmail" class="col-sm-4 col-form-label">Freight:</label>

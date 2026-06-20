@@ -16,12 +16,67 @@ function purchaseActivityDateText($timestamp) {
     return !empty($timestamp) ? date_c($timestamp) : 'Not set';
 }
 
+function purchaseOrderColumnExists($conn, $columnName) {
+    static $cache = array();
+    $key = 'tblPurchaseOrders.' . $columnName;
+
+    if (array_key_exists($key, $cache)) {
+        return $cache[$key];
+    }
+
+    $stmt = $conn->prepare("SHOW COLUMNS FROM tblPurchaseOrders LIKE :column_name");
+    $stmt->bindValue(':column_name', $columnName);
+    $stmt->execute();
+    $cache[$key] = (bool)$stmt->fetch(PDO::FETCH_ASSOC);
+
+    return $cache[$key];
+}
+
+function purchaseConfirmationColumnsExist($conn) {
+    return purchaseOrderColumnExists($conn, 'order_confirmation_required')
+        && purchaseOrderColumnExists($conn, 'order_confirmation_received')
+        && purchaseOrderColumnExists($conn, 'estimated_arrival_date')
+        && purchaseOrderColumnExists($conn, 'confirmation_file_key')
+        && purchaseOrderColumnExists($conn, 'confirmation_file_name')
+        && purchaseOrderColumnExists($conn, 'confirmation_uploaded_at');
+}
+
 function getPurchaseStatusActivityLabel($status_id, $company_id) {
     if (empty($status_id)) {
         return 'Not set';
     }
     $label = getTabFieCol('description', 'tblPurchaseStatus', 'id', $status_id, $company_id);
     return !empty($label) ? $label : 'Status #' . $status_id;
+}
+
+function findPurchaseStatusIdByNames($conn, $company_id, $statusNames) {
+    if (empty($statusNames)) {
+        return null;
+    }
+
+    $placeholders = array();
+    $params = array(':company_id' => $company_id);
+
+    foreach ($statusNames as $index => $statusName) {
+        $key = ':status_' . $index;
+        $placeholders[] = $key;
+        $params[$key] = strtolower($statusName);
+    }
+
+    $stmt = $conn->prepare("
+        SELECT id, description
+        FROM tblPurchaseStatus
+        WHERE company_id = :company_id
+          AND LOWER(TRIM(description)) IN (" . implode(',', $placeholders) . ")
+        ORDER BY ordering ASC, id ASC
+        LIMIT 1
+    ");
+    foreach ($params as $key => $value) {
+        $stmt->bindValue($key, $value);
+    }
+    $stmt->execute();
+
+    return $stmt->fetch(PDO::FETCH_ASSOC);
 }
 
 function getPurchaseActivityRow($conn, $pid, $company_id) {
@@ -92,6 +147,7 @@ function purchaseProcessActivityActions() {
         'purchase_delivery_docket_printed' => 'Printed: Purchase delivery docket',
         'purchase_confirmation_requested' => 'Purchase order confirmation requested',
         'purchase_confirmation_requested_cleared' => 'Purchase order confirmation request cleared',
+        'purchase_confirmation_received' => 'Purchase order confirmation received',
         'purchase_order_printed' => 'Printed: Purchase order',
         'purchase_order_emailed' => 'Email sent: Purchase order'
     );
@@ -102,6 +158,7 @@ function purchaseProcessActivityAliases() {
         'purchase_delivery_docket_printed' => array('Printed: Purchase delivery docket', 'Printed Purchase delivery docket'),
         'purchase_confirmation_requested' => array('Purchase order confirmation requested', 'Purchase order confirmation request cleared'),
         'purchase_confirmation_requested_cleared' => array('Purchase order confirmation request cleared'),
+        'purchase_confirmation_received' => array('Purchase order confirmation received'),
         'purchase_order_printed' => array('Printed: Purchase order', 'Printed Purchase order'),
         'purchase_order_emailed' => array('Email sent: Purchase order', 'Email sent Purchase order')
     );
@@ -112,9 +169,38 @@ function getPurchaseProcessActivity($conn, $pid, $company_id) {
     $history = array(
         'purchase_delivery_docket_printed' => null,
         'purchase_confirmation_requested' => null,
+        'purchase_confirmation_received' => null,
         'purchase_order_printed' => null,
-        'purchase_order_emailed' => null
+        'purchase_order_emailed' => null,
+        'meta' => array()
     );
+
+    if (purchaseConfirmationColumnsExist($conn)) {
+        $metaStmt = $conn->prepare("
+            SELECT order_confirmation_required, order_confirmation_received, estimated_arrival_date, confirmation_file_name, order_date
+            FROM tblPurchaseOrders
+            WHERE id = :pid
+              AND company_id = :company_id
+            LIMIT 1
+        ");
+        $metaStmt->bindValue(':pid', $pid, PDO::PARAM_INT);
+        $metaStmt->bindValue(':company_id', $company_id, PDO::PARAM_INT);
+        $metaStmt->execute();
+        $meta = $metaStmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($meta) {
+            $history['meta'] = array(
+                'confirmation_required' => (int)$meta['order_confirmation_required'],
+                'confirmation_received' => (int)$meta['order_confirmation_received'],
+                'estimated_arrival_date_input' => !empty($meta['estimated_arrival_date']) ? date('Y-m-d', (int)$meta['estimated_arrival_date']) : '',
+                'confirmation_file_name' => $meta['confirmation_file_name'],
+                'confirmation_overdue' => !empty($meta['order_confirmation_required'])
+                    && empty($meta['order_confirmation_received'])
+                    && !empty($meta['order_date'])
+                    && ((int)$meta['order_date'] < (time() - (48 * 60 * 60)))
+            );
+        }
+    }
 
     $params = array(
         ':pid' => $pid,
@@ -169,9 +255,132 @@ function getPurchaseProcessActivity($conn, $pid, $company_id) {
         }
     }
 
+    if (!empty($history['meta']['confirmation_overdue']) && !empty($history['purchase_confirmation_requested'])) {
+        $history['purchase_confirmation_requested']['confirmation_overdue'] = true;
+    }
+
     return $history;
 }
 	
+if (isset($_POST['action']) && $_POST['action'] === 'save_purchase_confirmation') {
+    header('Content-Type: application/json');
+
+    $database = new Database();
+    $conn = $database->connect();
+    $company_id = (int)$_SESSION['session_company_id'];
+    $pid = isset($_POST['pid']) ? (int)$_POST['pid'] : 0;
+    $estimatedArrivalDate = isset($_POST['estimated_arrival_date']) ? trim((string)$_POST['estimated_arrival_date']) : '';
+
+    if ($pid <= 0 || empty($estimatedArrivalDate)) {
+        echo json_encode(['success' => false, 'message' => 'Missing purchase order or estimated arrival date.']);
+        exit;
+    }
+
+    if (!purchaseConfirmationColumnsExist($conn)) {
+        echo json_encode(['success' => false, 'message' => 'Purchase confirmation columns have not been added to the database yet.']);
+        exit;
+    }
+
+    $stmt = $conn->prepare("SELECT id FROM tblPurchaseOrders WHERE id = :pid AND company_id = :company_id LIMIT 1");
+    $stmt->bindValue(':pid', $pid, PDO::PARAM_INT);
+    $stmt->bindValue(':company_id', $company_id, PDO::PARAM_INT);
+    $stmt->execute();
+
+    if (!$stmt->fetch(PDO::FETCH_ASSOC)) {
+        echo json_encode(['success' => false, 'message' => 'Purchase order not found.']);
+        exit;
+    }
+
+    $etaTimestamp = strtotime($estimatedArrivalDate);
+    if (!$etaTimestamp) {
+        echo json_encode(['success' => false, 'message' => 'Invalid estimated arrival date.']);
+        exit;
+    }
+
+    $fileKey = null;
+    $fileName = null;
+    $uploadedAt = null;
+
+    if (!empty($_FILES['confirmation_file']) && $_FILES['confirmation_file']['error'] !== UPLOAD_ERR_NO_FILE) {
+        if ($_FILES['confirmation_file']['error'] !== UPLOAD_ERR_OK) {
+            echo json_encode(['success' => false, 'message' => 'Confirmation file upload failed.']);
+            exit;
+        }
+
+        if ((int)$_FILES['confirmation_file']['size'] > (10 * 1024 * 1024)) {
+            echo json_encode(['success' => false, 'message' => 'Confirmation file is too large. Maximum size is 10 MB.']);
+            exit;
+        }
+
+        $allowedExtensions = array('pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx', 'xls', 'xlsx', 'csv', 'txt');
+        $fileName = basename($_FILES['confirmation_file']['name']);
+        $extension = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+
+        if (!in_array($extension, $allowedExtensions, true)) {
+            echo json_encode(['success' => false, 'message' => 'Confirmation file type is not allowed.']);
+            exit;
+        }
+
+        $safeName = preg_replace('/[^A-Za-z0-9._-]+/', '_', $fileName);
+        $fileKey = 'purchase_confirmations/' . $pid . '_' . bin2hex(random_bytes(8)) . '_' . $safeName;
+        $uploadResult = uploadFileToS3($_FILES['confirmation_file']['tmp_name'], $fileKey);
+
+        if (is_string($uploadResult) && strpos($uploadResult, 'Error:') === 0) {
+            echo json_encode(['success' => false, 'message' => 'Could not upload confirmation file.']);
+            exit;
+        }
+
+        $uploadedAt = time();
+    }
+
+    $confirmedStatus = findPurchaseStatusIdByNames($conn, $company_id, array('Confirmed'));
+    $statusSql = $confirmedStatus ? ", order_status_id = :order_status_id" : "";
+
+    if ($fileKey) {
+        $update = $conn->prepare("
+            UPDATE tblPurchaseOrders
+            SET order_confirmation_received = 1,
+                estimated_arrival_date = :estimated_arrival_date,
+                confirmation_file_key = :confirmation_file_key,
+                confirmation_file_name = :confirmation_file_name,
+                confirmation_uploaded_at = :confirmation_uploaded_at
+                " . $statusSql . "
+            WHERE id = :pid
+              AND company_id = :company_id
+        ");
+        $update->bindValue(':confirmation_file_key', $fileKey);
+        $update->bindValue(':confirmation_file_name', $fileName);
+        $update->bindValue(':confirmation_uploaded_at', $uploadedAt, PDO::PARAM_INT);
+    } else {
+        $update = $conn->prepare("
+            UPDATE tblPurchaseOrders
+            SET order_confirmation_received = 1,
+                estimated_arrival_date = :estimated_arrival_date
+                " . $statusSql . "
+            WHERE id = :pid
+              AND company_id = :company_id
+        ");
+    }
+
+    $update->bindValue(':estimated_arrival_date', $etaTimestamp, PDO::PARAM_INT);
+    if ($confirmedStatus) {
+        $update->bindValue(':order_status_id', (int)$confirmedStatus['id'], PDO::PARAM_INT);
+    }
+    $update->bindValue(':pid', $pid, PDO::PARAM_INT);
+    $update->bindValue(':company_id', $company_id, PDO::PARAM_INT);
+    $update->execute();
+
+    addPurchaseActivity($pid, $company_id, 5, 'Purchase order confirmation received' . ($fileName ? ': ' . $fileName : ''), $_SESSION['session_user_id'], 0);
+
+    echo json_encode([
+        'success' => true,
+        'message' => 'Purchase confirmation saved.',
+        'file_name' => $fileName,
+        'estimated_arrival_date_display' => date_c($etaTimestamp),
+        'history' => getPurchaseProcessActivity($conn, $pid, $company_id)
+    ]);
+    exit;
+}
 
 if (isset($data_raw['action']) && $data_raw['action'] == 'read_purchase') {
     $data = sanInputs($data_raw);
@@ -213,6 +422,10 @@ if (isset($data_raw['action']) && $data_raw['action'] == 'read_purchase') {
     'purchaser_user' => getTableField('first_lastname', 'tblUsers', $row['purchaser_user_id']),
     'order_date' => date_c($row['order_date']),
     'order_date_required' => date_c($row['order_date_required']),
+    'estimated_arrival_date' => (array_key_exists('estimated_arrival_date', $row) && !empty($row['estimated_arrival_date'])) ? date_c($row['estimated_arrival_date']) : '',
+    'order_confirmation_required' => array_key_exists('order_confirmation_required', $row) ? (int)$row['order_confirmation_required'] : 0,
+    'order_confirmation_received' => array_key_exists('order_confirmation_received', $row) ? (int)$row['order_confirmation_received'] : 0,
+    'confirmation_file_name' => array_key_exists('confirmation_file_name', $row) ? $row['confirmation_file_name'] : '',
     'ven_inv_number' => $row['ven_inv_number'],
     'freight' => $row['freight'],
     'order_notes' => $row['order_notes'],
@@ -270,6 +483,20 @@ if (isset($data_raw['action']) && $data_raw['action'] == 'record_purchase_proces
 
     addPurchaseActivity($pid, $company_id, 5, $actions[$workflow_type], $_SESSION['session_user_id'], 0);
 
+    if (purchaseConfirmationColumnsExist($conn) && in_array($workflow_type, array('purchase_confirmation_requested', 'purchase_confirmation_requested_cleared'), true)) {
+        $required = $workflow_type === 'purchase_confirmation_requested' ? 1 : 0;
+        $updateRequired = $conn->prepare("
+            UPDATE tblPurchaseOrders
+            SET order_confirmation_required = :order_confirmation_required
+            WHERE id = :pid
+              AND company_id = :company_id
+        ");
+        $updateRequired->bindValue(':order_confirmation_required', $required, PDO::PARAM_INT);
+        $updateRequired->bindValue(':pid', $pid, PDO::PARAM_INT);
+        $updateRequired->bindValue(':company_id', $company_id, PDO::PARAM_INT);
+        $updateRequired->execute();
+    }
+
     echo json_encode([
         'success' => true,
         'history' => getPurchaseProcessActivity($conn, $pid, $company_id)
@@ -309,6 +536,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $company_id = $_SESSION['session_company_id'];
         $existingPurchase = getPurchaseActivityRow($conn, $data['pid'], $company_id);
         $order_date_required = strtotime($data['order_date_required']);
+        $estimated_arrival_date = !empty($data['estimated_arrival_date']) ? strtotime($data['estimated_arrival_date']) : null;
         // Check ven_inv_number to decide order_status_id
         if (!empty($data['ven_inv_number'])) {
             $order_status_id = 10;
@@ -316,6 +544,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $order_status_id = $data['order_status_id'];
         }
         // Prepare SQL query to update the purchase order
+        $setEstimatedArrival = purchaseOrderColumnExists($conn, 'estimated_arrival_date') ? ", estimated_arrival_date = :estimated_arrival_date" : "";
         $query = "UPDATE tblPurchaseOrders SET 
                     vendor_uid = :vendor_uid,
                     vendor_name = :vendor_name,
@@ -336,6 +565,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     delivery_postcode = :delivery_postcode,
                     delivery_state = :delivery_state,
                     order_status_id = :order_status_id
+                    " . $setEstimatedArrival . "
                   WHERE id = :pid AND company_id = :company_id";
 
         // Bind parameters to the query
@@ -362,6 +592,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             ':order_status_id' => $order_status_id,
             ':company_id' => $company_id
         );
+        if (purchaseOrderColumnExists($conn, 'estimated_arrival_date')) {
+            $bindings[':estimated_arrival_date'] = $estimated_arrival_date;
+        }
 
         // Execute the SQL query
         $stmt = $conn->prepare($query);

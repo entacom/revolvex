@@ -31,7 +31,7 @@ The current product goal is to keep improving the system as a practical business
 ## Recently Completed
 - Dashboard: richer status cards, purchase order card, invoice performance chart, cached closed-month invoice summaries, last 3 recent orders, and last 5 recent activities.
 - Orders: stronger order header, separate Print and Email dropdowns, Process Order workflow modal with per-action activity history, Process Quote modal with payment tracking and convert-to-order, compact order activity grid, permission-backed activity deletion, email quote/order confirmation support, richer recent order data, order activity logging, sorted/restyled order list.
-- Purchases: purchase activity table/workflow, Process Purchase modal with delivery docket, confirmation request, purchase order print/email, transient email attachments, restyled purchasing list, sortable purchase columns, activity logging for key purchasing changes.
+- Purchases: purchase activity table/workflow, Process Purchase modal with delivery docket, confirmation request/received tracking, confirmation file upload, estimated arrival date, purchase order print/email, transient email attachments, restyled purchasing list, sortable purchase columns, activity logging for key purchasing changes.
 - Production: purchased items copied to PO are excluded from production and production exports; production rows can also be manually marked as purchased from the queue.
 - Reports and Inventory: refreshed layouts, report inputs, inventory row styling, stock status pills, and Finished filter on stock report.
 - Uploads/files: order attachment upload validation, safer JSON upload errors, S3 presigned URL normalization, and ownership-checked order attachment deletion.
@@ -98,6 +98,7 @@ The current product goal is to keep improving the system as a practical business
 3. Purchases workflow.
    - Improve purchase activity visibility and filter/search.
    - Decide whether purchase process attachments should be stored permanently or remain email-only.
+   - Consider a dashboard queue for POs whose supplier confirmation has not arrived within 48 hours.
    - Add dashboard/purchase summary cards if useful.
 
 4. Reports.

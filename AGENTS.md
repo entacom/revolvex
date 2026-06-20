@@ -77,6 +77,7 @@
    - Quote workflow now has its own Process Quote modal with payment-required/payment-received tracking, quote print/email activity, and convert-to-order handling.
    - Process Order modal actions now record typed order workflow activity and show the latest action/date/user under each modal group.
    - Purchase orders now have a Process Purchase modal with delivery docket print, order-confirmation request tracking, purchase order print/email activity, and transient email attachments.
+   - Purchase confirmation workflow now supports required/received tracking, confirmation file upload, estimated arrival date, 48-hour missing-confirmation flagging, and linked PO colour badges on order items.
    - Order Activity tab is now a compact grid and activity deletion is permission-backed with server-side company ownership checks.
    - Admin Reports main page has been restyled with a stronger shell, report tabs, consistent inputs/buttons, and cleaner report/table panel styling.
    - Admin Inventory page has been restyled with a stronger header/filter shell, card-style inventory rows, stock status pills, cleaner actions, refreshed modal chrome, and quieter inventory JavaScript.

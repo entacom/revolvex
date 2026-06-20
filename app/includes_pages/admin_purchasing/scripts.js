@@ -213,6 +213,8 @@ function getPurchaseId() {
             $("#order_date").val(data.order_date || '');
             $("#order_date_required").val(data.order_date_required || '');
             $(".order_date_required_picker").datepicker({ dateFormat: "dd-mm-yy" });
+            $("#estimated_arrival_date").val(data.estimated_arrival_date || '');
+            $(".estimated_arrival_date_picker").datepicker({ dateFormat: "dd-mm-yy" });
             $("#freight").val(data.freight || '');
             $("#order_number").val(data.order_number || '');
             $("#purchaser_user_id").val(data.purchaser_user_id || '');
@@ -453,6 +455,7 @@ function purchaseProcessLabels() {
     return {
         purchase_delivery_docket_printed: 'Print',
         purchase_confirmation_requested: 'Confirmation required',
+        purchase_confirmation_received: 'Confirmation received',
         purchase_order_printed: 'Print',
         purchase_order_emailed: 'Email'
     };
@@ -470,8 +473,18 @@ function renderProcessPurchaseActivity(history) {
     const confirmationRequested = history
         && history.purchase_confirmation_requested
         && !String(history.purchase_confirmation_requested.description || '').toLowerCase().includes('cleared');
+    const confirmationReceived = history && history.purchase_confirmation_received;
+    const confirmationOverdue = history
+        && history.purchase_confirmation_requested
+        && history.purchase_confirmation_requested.confirmation_overdue
+        && !confirmationReceived;
 
     $('#purchase_confirmation_requested_checkbox').prop('checked', !!confirmationRequested);
+    $('#purchase_confirmation_overdue_notice').toggleClass('d-none', !confirmationOverdue);
+    if (history && history.meta) {
+        $('#purchase_confirmation_eta').val(history.meta.estimated_arrival_date_input || '');
+        $('#purchase_confirmation_file_summary').text(history.meta.confirmation_file_name ? 'Uploaded: ' + history.meta.confirmation_file_name : '');
+    }
 
     $('[data-purchase-process-summary]').each(function() {
         const workflowType = $(this).data('purchase-process-summary');
@@ -571,6 +584,56 @@ function ProcessPurchaseConfirmationChanged() {
     recordProcessPurchaseActivity(workflowType, loadProcessPurchaseActivity);
 }
 
+function ProcessPurchaseSaveConfirmation() {
+    const processPid = getProcessPurchaseId();
+    const eta = $('#purchase_confirmation_eta').val();
+    const fileInput = document.getElementById('purchase_confirmation_file');
+
+    if (!processPid) {
+        alert('Missing purchase order id.');
+        return;
+    }
+
+    if (!eta) {
+        alert('Please enter an estimated arrival date.');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('action', 'save_purchase_confirmation');
+    formData.append('pid', processPid);
+    formData.append('estimated_arrival_date', eta);
+
+    if (fileInput && fileInput.files && fileInput.files.length) {
+        formData.append('confirmation_file', fileInput.files[0]);
+    }
+
+    $.ajax({
+        url: crud_url,
+        type: 'POST',
+        data: formData,
+        processData: false,
+        contentType: false,
+        dataType: 'json',
+        success: function(response) {
+            if (response && response.success) {
+                $('#purchase_confirmation_file').val('');
+                $('#purchase_confirmation_file_summary').text(response.file_name ? 'Uploaded: ' + response.file_name : '');
+                $('#estimated_arrival_date').val(response.estimated_arrival_date_display || '');
+                renderProcessPurchaseActivity(response.history || {});
+                LoadSubtab('purchase_activity');
+                handleSuccess(response.message || 'Confirmation saved.');
+                return;
+            }
+
+            alert((response && response.message) ? response.message : 'Could not save confirmation.');
+        },
+        error: function(xhr) {
+            alert(xhr.responseText || 'Could not save confirmation.');
+        }
+    });
+}
+
 function ProcessPurchasePrintDelivery() {
     recordProcessPurchaseActivity('purchase_delivery_docket_printed', function() {
         loadProcessPurchaseActivity();
@@ -638,6 +701,7 @@ function savePurchase() {
         additional_notes: $('#additional_notes').val(),
         freight: $('#freight').val(),
         order_date_required: $('#order_date_required').val(),
+        estimated_arrival_date: $('#estimated_arrival_date').val(),
         order_status_id: $('#order_status_id').val(),
         payment_terms_day: $('#payment_terms_day').val(),
         payment_terms_type: $('#payment_terms_type').val(),

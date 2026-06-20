@@ -12,6 +12,92 @@ function sendJsonResponse($data) {
     exit;
 }
 
+function orderContentPurchaseColumnExists($conn, $columnName) {
+    static $cache = array();
+    $key = 'tblPurchaseOrders.' . $columnName;
+
+    if (array_key_exists($key, $cache)) {
+        return $cache[$key];
+    }
+
+    $stmt = $conn->prepare("SHOW COLUMNS FROM tblPurchaseOrders LIKE :column_name");
+    $stmt->bindValue(':column_name', $columnName);
+    $stmt->execute();
+    $cache[$key] = (bool)$stmt->fetch(PDO::FETCH_ASSOC);
+
+    return $cache[$key];
+}
+
+function renderLinkedPurchaseBadge($conn, $pid, $company_id) {
+    $hasConfirmationColumns = orderContentPurchaseColumnExists($conn, 'order_confirmation_required')
+        && orderContentPurchaseColumnExists($conn, 'order_confirmation_received');
+
+    $selectConfirmation = $hasConfirmationColumns
+        ? ", po.order_confirmation_required, po.order_confirmation_received"
+        : ", 0 AS order_confirmation_required, 0 AS order_confirmation_received";
+
+    $stmt = $conn->prepare("
+        SELECT po.id, po.order_date, po.order_date_required, ps.description AS status_name
+               " . $selectConfirmation . "
+        FROM tblPurchaseOrders po
+        LEFT JOIN tblPurchaseStatus ps
+          ON ps.id = po.order_status_id
+         AND ps.company_id = po.company_id
+        WHERE po.id = :pid
+          AND po.company_id = :company_id
+        LIMIT 1
+    ");
+    $stmt->bindValue(':pid', $pid, PDO::PARAM_INT);
+    $stmt->bindValue(':company_id', $company_id, PDO::PARAM_INT);
+    $stmt->execute();
+    $purchase = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$purchase) {
+        return '<span class="badge bg-secondary">PO #' . (int)$pid . '</span>';
+    }
+
+    $status = trim((string)$purchase['status_name']);
+    $statusKey = strtolower($status);
+    $dateOverdue = !empty($purchase['order_date_required'])
+        && (int)$purchase['order_date_required'] < strtotime('today')
+        && !in_array($statusKey, array('received', 'invoiced'), true);
+    $badgeClass = 'bg-light text-dark border';
+    $style = '';
+
+    if ($dateOverdue || $statusKey === 'overdue') {
+        $badgeClass = 'bg-danger';
+        if ($status === '') {
+            $status = 'Overdue';
+        }
+    } elseif ($statusKey === 'ordered' || $statusKey === 'order') {
+        $badgeClass = 'bg-warning text-dark';
+    } elseif ($statusKey === 'confirmed') {
+        $badgeClass = 'text-dark';
+        $style = ' style="background:#fd7e14;"';
+    } elseif ($statusKey === 'received') {
+        $badgeClass = 'bg-success';
+    } elseif ($statusKey === 'invoiced') {
+        $badgeClass = 'bg-primary';
+    }
+
+    $confirmationOverdue = !empty($purchase['order_confirmation_required'])
+        && empty($purchase['order_confirmation_received'])
+        && !empty($purchase['order_date'])
+        && ((int)$purchase['order_date'] < (time() - (48 * 60 * 60)));
+
+    $html = '<a href="?p=admin_purchasing&pid=' . (int)$purchase['id'] . '" class="badge text-decoration-none ' . $badgeClass . '"' . $style . '>PO #' . (int)$purchase['id'];
+    if ($status !== '') {
+        $html .= ' ' . htmlspecialchars($status, ENT_QUOTES, 'UTF-8');
+    }
+    $html .= '</a>';
+
+    if ($confirmationOverdue) {
+        $html .= '<div class="mt-1"><span class="badge bg-danger">Confirmation overdue</span></div>';
+    }
+
+    return $html;
+}
+
 // Checks if the request method is POST and 'tab_id' is set
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['tab_id'])) {
     $database = new Database();
@@ -282,7 +368,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['tab_id'])) {
                 $unit = getFieldColumn('description', 'tblItemUnits', 'id', $row['unit_id']);
                 $purchaseBadge = '';
                 if (!empty($row['purchased_item'])) {
-                    $purchaseBadge = '<a href="?p=admin_purchasing&pid=' . (int)$row['purchased_item'] . '" class="badge bg-success text-decoration-none">PO #' . htmlspecialchars($row['purchased_item']) . '</a>';
+                    $purchaseBadge = renderLinkedPurchaseBadge($conn, (int)$row['purchased_item'], (int)$_SESSION['session_company_id']);
                 }
                     $output .= '<div class="row fw-bold align-items-center border-bottom py-1 hover-row" style="margin: 0;">
                         <div class="col-1 px-1">' . htmlspecialchars($row['part_number']) . '</div>

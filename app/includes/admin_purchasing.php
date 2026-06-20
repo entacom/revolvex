@@ -76,10 +76,28 @@
                             <div class="fw-bold">Order Confirmation Required</div>
                             <div class="small text-muted">Mark this PO as needing confirmation from the supplier.</div>
                             <div class="small text-success purchase-process-summary" data-purchase-process-summary="purchase_confirmation_requested"></div>
+                            <div class="small text-danger d-none" id="purchase_confirmation_overdue_notice">Confirmation has not been received within 48 hours.</div>
                         </div>
                         <div class="form-check form-switch m-0">
                             <input class="form-check-input" type="checkbox" id="purchase_confirmation_requested_checkbox" onchange="ProcessPurchaseConfirmationChanged()">
                         </div>
+                    </div>
+                    <div class="list-group-item d-flex justify-content-between align-items-start gap-3">
+                        <div class="flex-grow-1">
+                            <div class="fw-bold">Confirmation Received</div>
+                            <div class="small text-muted">Upload the supplier confirmation and enter the estimated arrival date.</div>
+                            <div class="row g-2 mt-1">
+                                <div class="col-md-5">
+                                    <input type="date" id="purchase_confirmation_eta" class="form-control form-control-sm">
+                                </div>
+                                <div class="col-md-7">
+                                    <input type="file" id="purchase_confirmation_file" class="form-control form-control-sm" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx,.csv,.txt">
+                                </div>
+                            </div>
+                            <div class="small text-success purchase-process-summary mt-1" data-purchase-process-summary="purchase_confirmation_received"></div>
+                            <div class="small text-muted" id="purchase_confirmation_file_summary"></div>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-success mt-4" onclick="ProcessPurchaseSaveConfirmation()">Save</button>
                     </div>
                     <div class="list-group-item d-flex justify-content-between align-items-center gap-3 bg-light">
                         <div>
