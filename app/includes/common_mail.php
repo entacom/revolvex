@@ -334,10 +334,49 @@ function sendPurchaseOrderEmail($order_id, $pdfPath, $email_to1, $email_to2 = nu
 
         $mail->addAttachment($absolutePdfPath, "purchase_order_{$order_id}.pdf");
 
+        if (!empty($_FILES['attachments']) && is_array($_FILES['attachments']['name'])) {
+            $allowedExtensions = array('pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx', 'xls', 'xlsx', 'csv', 'txt');
+            $maxBytes = 10 * 1024 * 1024;
+
+            foreach ($_FILES['attachments']['name'] as $index => $name) {
+                if ($_FILES['attachments']['error'][$index] === UPLOAD_ERR_NO_FILE) {
+                    continue;
+                }
+
+                if ($_FILES['attachments']['error'][$index] !== UPLOAD_ERR_OK) {
+                    echo json_encode(['success' => false, 'message' => 'One of the attachments failed to upload.']);
+                    return;
+                }
+
+                if ((int)$_FILES['attachments']['size'][$index] > $maxBytes) {
+                    echo json_encode(['success' => false, 'message' => 'Attachment is too large. Maximum size is 10 MB.']);
+                    return;
+                }
+
+                $extension = strtolower(pathinfo($name, PATHINFO_EXTENSION));
+                if (!in_array($extension, $allowedExtensions, true)) {
+                    echo json_encode(['success' => false, 'message' => 'Attachment type not allowed: ' . htmlspecialchars($name)]);
+                    return;
+                }
+
+                $safeName = preg_replace('/[^A-Za-z0-9._-]+/', '_', basename($name));
+                $mail->addAttachment($_FILES['attachments']['tmp_name'][$index], $safeName);
+            }
+        }
+
         $mail->send();
 
         // cleanup after success
         @unlink($absolutePdfPath);
+
+        addPurchaseActivity(
+            $order_id,
+            $company_id,
+            5,
+            'Email sent: Purchase order sent to ' . $email_to1,
+            $_SESSION['session_user_id'],
+            0
+        );
 
         echo json_encode(['success' => true, 'message' => 'Email sent successfully!']);
     } catch (Exception $e) {

@@ -200,6 +200,7 @@ if ($sub_tab_id == 'ordered_items') {
             <div class="ms-auto d-flex gap-2">
 
                 <button type="button" class="btn btn-sm btn-outline-secondary" onclick="addOrderItemsModal()">Add Item to Purchase Order</button>
+                <button type="button" class="btn btn-sm btn-success" onclick="OpenProcessPurchaseModal('.$_POST['pid'].')"><i class="bx bxs-factory"></i> Process Purchase</button>
                 <button type="button" class="btn btn-sm btn-outline-secondary" onclick="convertBill()">Convert Bill</button>
                 <button type="button" class="btn btn-sm btn-outline-secondary" onclick="PrintPurchaseOrder('.$_POST['pid'].')">Print</button>
                 <button type="button" class="btn btn-sm btn-outline-secondary" onclick="PrintPurchaseDel('.$_POST['pid'].')">Print Delivery</button>

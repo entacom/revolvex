@@ -530,6 +530,61 @@
         </div>
     </div>
 </div>
+<div class="modal fade" id="ProcessQuoteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Process Quote</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <input type="hidden" id="process_quote_order_id">
+            <div class="modal-body">
+                <div class="list-group process-order-list">
+                    <div class="list-group-item d-flex justify-content-between align-items-center gap-3">
+                        <div>
+                            <div class="fw-bold">Payment Required</div>
+                            <div class="small text-muted">Mark this quote as requiring payment before it can become an order.</div>
+                            <div class="small text-success process-activity-summary" data-quote-workflow-summary="quote_payment_required"></div>
+                        </div>
+                        <div class="form-check form-switch m-0">
+                            <input class="form-check-input" type="checkbox" id="quote_payment_required_checkbox" onchange="ProcessQuotePaymentRequiredChanged()">
+                        </div>
+                    </div>
+                    <div class="list-group-item d-flex justify-content-between align-items-center gap-3">
+                        <div>
+                            <div class="fw-bold">Quote Document</div>
+                            <div class="small text-muted">Email or print the quote document.</div>
+                            <div class="small text-success process-activity-summary" data-quote-workflow-summary="quote_emailed"></div>
+                            <div class="small text-success process-activity-summary" data-quote-workflow-summary="quote_printed"></div>
+                        </div>
+                        <div class="btn-group">
+                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="ProcessQuoteEmail()">Email</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="ProcessQuotePrint()">Print</button>
+                        </div>
+                    </div>
+                    <div class="list-group-item d-flex justify-content-between align-items-center gap-3 bg-light">
+                        <div>
+                            <div class="fw-bold">Convert To Order</div>
+                            <div class="small text-muted">Confirm payment if required, then convert this quote to an order.</div>
+                            <div class="small text-success process-activity-summary" data-quote-workflow-summary="quote_payment_received"></div>
+                            <div class="small text-success process-activity-summary" data-quote-workflow-summary="quote_converted_to_order"></div>
+                        </div>
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="form-check m-0">
+                                <input class="form-check-input" type="checkbox" id="quote_payment_received_checkbox" onchange="ProcessQuotePaymentReceivedChanged()">
+                                <label class="form-check-label small" for="quote_payment_received_checkbox">Payment received</label>
+                            </div>
+                            <button type="button" id="convert_quote_button" class="btn btn-sm btn-success" onclick="ProcessQuoteConvertToOrder()">Convert</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer justify-content-end">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
 <div class="modal fade" id="email_sales_order" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">

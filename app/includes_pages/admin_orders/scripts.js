@@ -534,17 +534,22 @@ function getOrderId() {
                         $('#site_phone').val('');
                     }
                 });
+const orderStatusText = String(data.order_status || '').toLowerCase();
+const isQuoteWorkflow = orderStatusText === 'quote' || orderStatusText === 'quoted';
+const primaryProcessButton = isQuoteWorkflow
+    ? '<button class="btn btn-info btn-sm" type="button" onclick="OpenProcessQuoteModal(' + order_id + ')"><i class="bx bx-file"></i> Process Quote</button>'
+    : '<button class="btn btn-success btn-sm" type="button" onclick="OpenProcessOrderModal(' + order_id + ')"><i class="bx bxs-factory"></i> Process Order</button>';
+
 // AMENDED BLOCK: Print and email dropdowns
 $('#printOrder').html(
     '<div class="d-flex align-items-center gap-2">' +
-        '<button class="btn btn-success btn-sm" type="button" onclick="OpenProcessOrderModal(' + order_id + ')">' +
-            '<i class="bx bxs-factory"></i> Process Order' +
-        '</button>' +
+        primaryProcessButton +
         '<div class="dropdown">' +
             '<button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" id="printDropdown" data-bs-toggle="dropdown" aria-expanded="false">' +
                 '<i class="bx bx-printer"></i> Print' +
             '</button>' +
             '<ul class="dropdown-menu dropdown-menu-end" style="z-index:3000;" aria-labelledby="printDropdown">' +
+                '<li><button type="button" class="dropdown-item" onclick="PrintSalesQuote(' + order_id + ')"><i class="bx bx-file"></i> Quote</button></li>' +
                 '<li><button type="button" class="dropdown-item" onclick="PrintSalesInvoice(' + order_id + ')"><i class="bx bx-receipt"></i> Invoice</button></li>' +
                 '<li><button type="button" class="dropdown-item" onclick="PrintPicking(' + order_id + ')"><i class="bx bx-list-check"></i> Picking</button></li>' +
             '</ul>' +
@@ -1401,6 +1406,11 @@ function processOrderActivityLabels() {
         upload_original_opened: 'Open attachments',
         order_confirmation_emailed: 'Email',
         order_confirmation_printed: 'Print',
+        quote_emailed: 'Email',
+        quote_printed: 'Print',
+        quote_payment_required: 'Payment required',
+        quote_payment_received: 'Payment received',
+        quote_converted_to_order: 'Convert',
         production_cards_printed: 'Print',
         production_csv_saved: 'Save',
         labels_dymo_printed: 'Dymo',
@@ -1430,6 +1440,185 @@ function renderProcessOrderActivity(history) {
             .removeClass('text-muted')
             .addClass('text-success')
             .html('<i class="bx bx-check-circle"></i> ' + label + ': ' + item.date + ' by ' + item.user);
+    });
+}
+
+function getProcessQuoteId() {
+    return $('#process_quote_order_id').val() || order_id;
+}
+
+function OpenProcessQuoteModal(processOrderId) {
+    $('#process_quote_order_id').val(processOrderId || order_id);
+    $('#convert_quote_button').prop('disabled', false).html('Convert');
+    loadProcessQuoteActivity();
+    $('#ProcessQuoteModal').modal('show');
+}
+
+function renderProcessQuoteActivity(history) {
+    const labels = processOrderActivityLabels();
+    const paymentRequired = history
+        && history.quote_payment_required
+        && !String(history.quote_payment_required.description || '').toLowerCase().includes('cleared');
+    const paymentReceived = history
+        && history.quote_payment_received
+        && !String(history.quote_payment_received.description || '').toLowerCase().includes('cleared');
+
+    $('#quote_payment_required_checkbox').prop('checked', !!paymentRequired);
+    $('#quote_payment_received_checkbox').prop('checked', !!paymentReceived).prop('disabled', !paymentRequired);
+
+    $('[data-quote-workflow-summary]').each(function() {
+        const workflowType = $(this).data('quote-workflow-summary');
+        const item = history && history[workflowType] ? history[workflowType] : null;
+        const label = labels[workflowType] || 'Action';
+
+        if (!item) {
+            $(this)
+                .removeClass('text-success')
+                .addClass('text-muted')
+                .html('<i class="bx bx-time-five"></i> ' + label + ': No activity yet');
+            return;
+        }
+
+        $(this)
+            .removeClass('text-muted')
+            .addClass('text-success')
+            .html('<i class="bx bx-check-circle"></i> ' + label + ': ' + item.date + ' by ' + item.user);
+    });
+}
+
+function loadProcessQuoteActivity() {
+    const processOrderId = getProcessQuoteId();
+
+    if (!processOrderId) {
+        renderProcessQuoteActivity({});
+        return;
+    }
+
+    $.ajax({
+        url: crud_url,
+        type: 'POST',
+        data: JSON.stringify({
+            action: 'get_process_order_activity',
+            order_id: processOrderId
+        }),
+        contentType: 'application/json',
+        dataType: 'json',
+        success: function(response) {
+            if (response && response.success) {
+                renderProcessQuoteActivity(response.history || {});
+            }
+        }
+    });
+}
+
+function recordProcessQuoteActivity(workflowType, callback) {
+    const processOrderId = getProcessQuoteId();
+
+    if (!processOrderId) {
+        if (typeof callback === 'function') {
+            callback();
+        }
+        return;
+    }
+
+    $.ajax({
+        url: crud_url,
+        type: 'POST',
+        data: JSON.stringify({
+            action: 'record_process_order_activity',
+            order_id: processOrderId,
+            workflow_type: workflowType
+        }),
+        contentType: 'application/json',
+        dataType: 'json',
+        complete: function() {
+            if (typeof callback === 'function') {
+                callback();
+            }
+        },
+        success: function(response) {
+            if (response && response.success) {
+                renderProcessQuoteActivity(response.history || {});
+            }
+        }
+    });
+}
+
+function ProcessQuotePaymentRequiredChanged() {
+    const workflowType = $('#quote_payment_required_checkbox').is(':checked')
+        ? 'quote_payment_required'
+        : 'quote_payment_required_cleared';
+    recordProcessQuoteActivity(workflowType, loadProcessQuoteActivity);
+}
+
+function ProcessQuotePaymentReceivedChanged() {
+    const workflowType = $('#quote_payment_received_checkbox').is(':checked')
+        ? 'quote_payment_received'
+        : 'quote_payment_received_cleared';
+    recordProcessQuoteActivity(workflowType, loadProcessQuoteActivity);
+}
+
+function ProcessQuoteEmail() {
+    var processOrderId = getProcessQuoteId();
+    $('#ProcessQuoteModal').modal('hide');
+    EmailSalesOrder(processOrderId, null, null, null, 'quote');
+}
+
+function ProcessQuotePrint() {
+    recordProcessQuoteActivity('quote_printed', function() {
+        loadProcessQuoteActivity();
+    });
+    PrintSalesQuote(getProcessQuoteId());
+}
+
+function ProcessQuoteConvertToOrder() {
+    var processOrderId = getProcessQuoteId();
+
+    if (!processOrderId) {
+        alert('Missing order id.');
+        return;
+    }
+
+    if ($('#quote_payment_required_checkbox').is(':checked') && !$('#quote_payment_received_checkbox').is(':checked')) {
+        alert('Payment is required before this quote can be converted.');
+        return;
+    }
+
+    if (!confirm('Convert this quote to an order?')) {
+        return;
+    }
+
+    $('#convert_quote_button').prop('disabled', true).text('Converting...');
+
+    $.ajax({
+        url: crud_url,
+        type: 'POST',
+        data: JSON.stringify({
+            action: 'convert_quote_to_order',
+            order_id: processOrderId,
+            payment_required: $('#quote_payment_required_checkbox').is(':checked') ? 1 : 0,
+            payment_received: $('#quote_payment_received_checkbox').is(':checked') ? 1 : 0
+        }),
+        contentType: 'application/json',
+        dataType: 'json',
+        success: function(response) {
+            if (response && response.success) {
+                handleSuccess(response.message || 'Quote converted to order.');
+                if (response.history) {
+                    renderProcessQuoteActivity(response.history);
+                }
+                $('#ProcessQuoteModal').modal('hide');
+                getOrderId();
+                return;
+            }
+
+            $('#convert_quote_button').prop('disabled', false).text('Convert');
+            alert((response && response.message) ? response.message : 'Convert failed.');
+        },
+        error: function(xhr) {
+            $('#convert_quote_button').prop('disabled', false).text('Convert');
+            alert(xhr.responseText || 'Convert failed.');
+        }
     });
 }
 
@@ -1800,6 +1989,10 @@ function SendEmailOrder() {
                                 $('#process_workflow_order_id').val(orderId);
                                 loadProcessOrderActivity();
                                 $('#ProcessOrderModal').modal('show');
+                            } else if (documentType === 'quote') {
+                                $('#process_quote_order_id').val(orderId);
+                                loadProcessQuoteActivity();
+                                $('#ProcessQuoteModal').modal('show');
                             }
                         } else {
                             alert("Error: " + res.message);

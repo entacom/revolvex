@@ -45,6 +45,63 @@
     <div id="sub_items_body"></div>
 </main>
 
+<div class="modal fade" id="ProcessPurchaseModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Process Purchase Order</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <input type="hidden" id="process_purchase_pid">
+            <div class="modal-body">
+                <div class="list-group process-order-list">
+                    <div class="list-group-item d-flex justify-content-between align-items-center gap-3">
+                        <div>
+                            <div class="fw-bold">Delivery Docket</div>
+                            <div class="small text-muted">Print the purchase delivery docket.</div>
+                            <div class="small text-success purchase-process-summary" data-purchase-process-summary="purchase_delivery_docket_printed"></div>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="ProcessPurchasePrintDelivery()">Print</button>
+                    </div>
+                    <div class="list-group-item d-flex justify-content-between align-items-center gap-3">
+                        <div class="flex-grow-1">
+                            <div class="fw-bold">Attach Files</div>
+                            <div class="small text-muted">Attach supplier files such as punching detail or order forms to the PO email.</div>
+                            <div class="small text-muted" id="purchase_process_attachment_summary">No files selected.</div>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="ProcessPurchaseChooseAttachments()">Choose</button>
+                    </div>
+                    <div class="list-group-item d-flex justify-content-between align-items-center gap-3">
+                        <div>
+                            <div class="fw-bold">Order Confirmation Required</div>
+                            <div class="small text-muted">Mark this PO as needing confirmation from the supplier.</div>
+                            <div class="small text-success purchase-process-summary" data-purchase-process-summary="purchase_confirmation_requested"></div>
+                        </div>
+                        <div class="form-check form-switch m-0">
+                            <input class="form-check-input" type="checkbox" id="purchase_confirmation_requested_checkbox" onchange="ProcessPurchaseConfirmationChanged()">
+                        </div>
+                    </div>
+                    <div class="list-group-item d-flex justify-content-between align-items-center gap-3 bg-light">
+                        <div>
+                            <div class="fw-bold">Purchase Order</div>
+                            <div class="small text-muted">Print or email the purchase order and selected attachments.</div>
+                            <div class="small text-success purchase-process-summary" data-purchase-process-summary="purchase_order_printed"></div>
+                            <div class="small text-success purchase-process-summary" data-purchase-process-summary="purchase_order_emailed"></div>
+                        </div>
+                        <div class="btn-group">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="ProcessPurchasePrintOrder()">Print</button>
+                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="ProcessPurchaseEmailOrder()">Email</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer justify-content-end">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 
 
 <div class="modal fade" id="add_item_order_modal" tabindex="-1">
@@ -319,7 +376,7 @@
 <!-- Modal Structure -->
 
 <div class="modal fade" id="email_purchase_order" tabindex="-1">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <!-- Modal Header -->
             <div class="modal-header">
@@ -340,6 +397,13 @@
                     <div class="col-12">
                         <label for="edit_rate" class="form-label">Email (optional)</label>
                         <input name="email_address_po2" type="text" id="email_address_po2" class="form-control">
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <label for="purchase_email_attachments" class="form-label">Attachments (optional)</label>
+                        <input name="purchase_email_attachments[]" type="file" id="purchase_email_attachments" class="form-control" multiple>
+                        <div class="form-text">Selected files are attached to this email only.</div>
                     </div>
                 </div>
             </div>

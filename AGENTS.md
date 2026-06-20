@@ -74,7 +74,9 @@
    - Admin Production now has a per-row Purchased checkbox that sets `tblOrderItems.purchased_item = 1`, records order activity, and removes the item from the production queue.
    - Admin order header actions now use separate Print and Email dropdown buttons.
    - Admin order header now includes a Process Order button in the action area. The modal groups upload original, email/print order confirmation, print production cards, print labels, print delivery docket, and process-to-production actions.
+   - Quote workflow now has its own Process Quote modal with payment-required/payment-received tracking, quote print/email activity, and convert-to-order handling.
    - Process Order modal actions now record typed order workflow activity and show the latest action/date/user under each modal group.
+   - Purchase orders now have a Process Purchase modal with delivery docket print, order-confirmation request tracking, purchase order print/email activity, and transient email attachments.
    - Order Activity tab is now a compact grid and activity deletion is permission-backed with server-side company ownership checks.
    - Admin Reports main page has been restyled with a stronger shell, report tabs, consistent inputs/buttons, and cleaner report/table panel styling.
    - Admin Inventory page has been restyled with a stronger header/filter shell, card-style inventory rows, stock status pills, cleaner actions, refreshed modal chrome, and quieter inventory JavaScript.

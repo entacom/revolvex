@@ -388,16 +388,26 @@ function SendEmailOrder() {
             // Add a delay to ensure PDF generation is complete
             setTimeout(function() {
                 // Step 2: Send the email with the PDF attached
+                const emailData = new FormData();
+                emailData.append('action', 'send_purchase_order_email');
+                emailData.append('order_id', orderId);
+                emailData.append('pdf_path', pdfPath);
+                emailData.append('email_to1', emailTo1);
+                emailData.append('email_to2', emailTo2 || '');
+
+                const attachmentInput = document.getElementById('purchase_email_attachments');
+                if (attachmentInput && attachmentInput.files && attachmentInput.files.length) {
+                    Array.from(attachmentInput.files).forEach(function(file) {
+                        emailData.append('attachments[]', file);
+                    });
+                }
+
                 $.ajax({
                     url: 'includes/common_mail.php',
                     type: 'POST',
-                    data: {
-                        action: 'send_purchase_order_email',
-                        order_id: orderId,
-                        pdf_path: pdfPath, // Pass the saved file path
-                        email_to1: emailTo1,
-                        email_to2: emailTo2
-                    },
+                    data: emailData,
+                    processData: false,
+                    contentType: false,
                     success: function(response) {
                         const res = JSON.parse(response);
                         if (res.success) {
@@ -415,6 +425,10 @@ function SendEmailOrder() {
                             }, 3000);
 
                             $('#email_purchase_order').modal('hide'); // Close the modal
+                            $('#purchase_email_attachments').val('');
+                            if ($('#ProcessPurchaseModal').hasClass('show')) {
+                                loadProcessPurchaseActivity();
+                            }
                         } else {
                             alert("Error: " + res.message);
                         }
@@ -429,6 +443,154 @@ function SendEmailOrder() {
             alert("Failed to generate PDF. Please try again.");
         }
     });
+}
+
+function getProcessPurchaseId() {
+    return $('#process_purchase_pid').val() || pid;
+}
+
+function purchaseProcessLabels() {
+    return {
+        purchase_delivery_docket_printed: 'Print',
+        purchase_confirmation_requested: 'Confirmation required',
+        purchase_order_printed: 'Print',
+        purchase_order_emailed: 'Email'
+    };
+}
+
+function OpenProcessPurchaseModal(processPid) {
+    $('#process_purchase_pid').val(processPid || pid);
+    updatePurchaseAttachmentSummary();
+    loadProcessPurchaseActivity();
+    $('#ProcessPurchaseModal').modal('show');
+}
+
+function renderProcessPurchaseActivity(history) {
+    const labels = purchaseProcessLabels();
+    const confirmationRequested = history
+        && history.purchase_confirmation_requested
+        && !String(history.purchase_confirmation_requested.description || '').toLowerCase().includes('cleared');
+
+    $('#purchase_confirmation_requested_checkbox').prop('checked', !!confirmationRequested);
+
+    $('[data-purchase-process-summary]').each(function() {
+        const workflowType = $(this).data('purchase-process-summary');
+        const item = history && history[workflowType] ? history[workflowType] : null;
+        const label = labels[workflowType] || 'Action';
+
+        if (!item) {
+            $(this)
+                .removeClass('text-success')
+                .addClass('text-muted')
+                .html('<i class="bx bx-time-five"></i> ' + label + ': No activity yet');
+            return;
+        }
+
+        $(this)
+            .removeClass('text-muted')
+            .addClass('text-success')
+            .html('<i class="bx bx-check-circle"></i> ' + label + ': ' + item.date + ' by ' + item.user);
+    });
+}
+
+function loadProcessPurchaseActivity() {
+    const processPid = getProcessPurchaseId();
+
+    if (!processPid) {
+        renderProcessPurchaseActivity({});
+        return;
+    }
+
+    $.ajax({
+        url: crud_url,
+        type: 'POST',
+        data: JSON.stringify({
+            action: 'get_purchase_process_activity',
+            pid: processPid
+        }),
+        contentType: 'application/json',
+        dataType: 'json',
+        success: function(response) {
+            if (response && response.success) {
+                renderProcessPurchaseActivity(response.history || {});
+            }
+        }
+    });
+}
+
+function recordProcessPurchaseActivity(workflowType, callback) {
+    const processPid = getProcessPurchaseId();
+
+    if (!processPid) {
+        if (typeof callback === 'function') {
+            callback();
+        }
+        return;
+    }
+
+    $.ajax({
+        url: crud_url,
+        type: 'POST',
+        data: JSON.stringify({
+            action: 'record_purchase_process_activity',
+            pid: processPid,
+            workflow_type: workflowType
+        }),
+        contentType: 'application/json',
+        dataType: 'json',
+        complete: function() {
+            if (typeof callback === 'function') {
+                callback();
+            }
+        },
+        success: function(response) {
+            if (response && response.success) {
+                renderProcessPurchaseActivity(response.history || {});
+                LoadSubtab('purchase_activity');
+            }
+        }
+    });
+}
+
+function updatePurchaseAttachmentSummary() {
+    const input = document.getElementById('purchase_email_attachments');
+    const count = input && input.files ? input.files.length : 0;
+    $('#purchase_process_attachment_summary').text(count ? count + ' file(s) selected for the PO email.' : 'No files selected.');
+}
+
+function ProcessPurchaseChooseAttachments() {
+    $('#purchase_email_attachments').trigger('click');
+}
+
+$(document).on('change', '#purchase_email_attachments', updatePurchaseAttachmentSummary);
+
+function ProcessPurchaseConfirmationChanged() {
+    const workflowType = $('#purchase_confirmation_requested_checkbox').is(':checked')
+        ? 'purchase_confirmation_requested'
+        : 'purchase_confirmation_requested_cleared';
+    recordProcessPurchaseActivity(workflowType, loadProcessPurchaseActivity);
+}
+
+function ProcessPurchasePrintDelivery() {
+    recordProcessPurchaseActivity('purchase_delivery_docket_printed', function() {
+        loadProcessPurchaseActivity();
+    });
+    PrintPurchaseDel(getProcessPurchaseId());
+}
+
+function ProcessPurchasePrintOrder() {
+    recordProcessPurchaseActivity('purchase_order_printed', function() {
+        loadProcessPurchaseActivity();
+    });
+    PrintPurchaseOrder(getProcessPurchaseId());
+}
+
+function ProcessPurchaseEmailOrder() {
+    const processPid = getProcessPurchaseId();
+    $('#email_pid').val(processPid);
+    $('#email_address_po1').val($('#vendor_email').val() || '');
+    updatePurchaseAttachmentSummary();
+    $('#email_purchase_order').modal('show');
 }
 
 

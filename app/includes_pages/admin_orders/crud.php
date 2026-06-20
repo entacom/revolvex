@@ -232,6 +232,13 @@ function processOrderWorkflowActions() {
         'upload_original_opened' => 'Upload original opened',
         'order_confirmation_printed' => 'Printed: Order confirmation',
         'order_confirmation_emailed' => 'Email sent: Order confirmation',
+        'quote_printed' => 'Printed: Quote',
+        'quote_emailed' => 'Email sent: Quote',
+        'quote_payment_required' => 'Payment required to proceed',
+        'quote_payment_required_cleared' => 'Payment required cleared',
+        'quote_payment_received' => 'Payment received',
+        'quote_payment_received_cleared' => 'Payment received cleared',
+        'quote_converted_to_order' => 'Quote converted to order',
         'production_cards_printed' => 'Printed: Production cards',
         'production_csv_saved' => 'Saved: Production CSV files',
         'labels_dymo_printed' => 'Printed: Dymo labels',
@@ -246,6 +253,13 @@ function processOrderWorkflowAliases() {
         'upload_original_opened' => array('Upload original opened'),
         'order_confirmation_printed' => array('Printed: Order confirmation', 'Printed Order confirmation'),
         'order_confirmation_emailed' => array('Email sent: Order confirmation', 'Email sent Order confirmation'),
+        'quote_printed' => array('Printed: Quote', 'Printed Quote'),
+        'quote_emailed' => array('Email sent: Quote', 'Email sent Quote'),
+        'quote_payment_required' => array('Payment required to proceed', 'Payment required cleared'),
+        'quote_payment_required_cleared' => array('Payment required cleared'),
+        'quote_payment_received' => array('Payment received', 'Payment received cleared'),
+        'quote_payment_received_cleared' => array('Payment received cleared'),
+        'quote_converted_to_order' => array('Quote converted to order'),
         'production_cards_printed' => array('Printed: Production cards', 'Printed Production cards'),
         'production_csv_saved' => array('Saved: Production CSV files', 'Saved Production CSV files'),
         'labels_dymo_printed' => array('Printed: Dymo labels', 'Printed Dymo labels'),
@@ -334,6 +348,11 @@ function getProcessOrderWorkflowActivity($conn, $order_id, $company_id) {
                     }
                 }
             }
+        }
+        if ($workflowType === 'quote_payment_required_cleared') {
+            $workflowType = 'quote_payment_required';
+        } elseif ($workflowType === 'quote_payment_received_cleared') {
+            $workflowType = 'quote_payment_received';
         }
 
         if (!empty($workflowType) && array_key_exists($workflowType, $history) && $history[$workflowType] === null) {
@@ -459,6 +478,87 @@ if (isset($data_raw['action']) && $data_raw['action'] === 'process_order_to_prod
     } catch (Exception $e) {
         error_log('process_order_to_production error: ' . $e->getMessage());
         echo json_encode(['success' => false, 'message' => 'Server error while processing order.']);
+        exit;
+    }
+}
+
+if (isset($data_raw['action']) && $data_raw['action'] === 'convert_quote_to_order') {
+    header('Content-Type: application/json');
+
+    $data = sanInputs($data_raw);
+    $order_id = isset($data['order_id']) ? (int)$data['order_id'] : 0;
+    $company_id = (int)$_SESSION['session_company_id'];
+    $payment_required = !empty($data['payment_required']);
+    $payment_received = !empty($data['payment_received']);
+
+    if ($order_id <= 0) {
+        echo json_encode(['success' => false, 'message' => 'Missing order id.']);
+        exit;
+    }
+
+    if ($payment_required && !$payment_received) {
+        echo json_encode(['success' => false, 'message' => 'Payment must be received before converting this quote.']);
+        exit;
+    }
+
+    $database = new Database();
+    $conn = $database->connect();
+
+    try {
+        $orderStmt = $conn->prepare("
+            SELECT order_id, order_status_id
+            FROM tblOrders
+            WHERE order_id = :order_id
+              AND company_id = :company_id
+            LIMIT 1
+        ");
+        $orderStmt->bindValue(':order_id', $order_id, PDO::PARAM_INT);
+        $orderStmt->bindValue(':company_id', $company_id, PDO::PARAM_INT);
+        $orderStmt->execute();
+        $order = $orderStmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$order) {
+            echo json_encode(['success' => false, 'message' => 'Order not found.']);
+            exit;
+        }
+
+        $orderStatus = findOrderStatusIdByNames($conn, $company_id, array('Order'));
+
+        if (!$orderStatus) {
+            echo json_encode(['success' => false, 'message' => 'No active order status named Order was found.']);
+            exit;
+        }
+
+        if ($payment_required && $payment_received) {
+            addOrderActivity($order_id, $company_id, 5, 'Payment received', $_SESSION['session_user_id'], 0, 'quote_payment_received');
+        }
+
+        if ((int)$order['order_status_id'] !== (int)$orderStatus['id']) {
+            $update = $conn->prepare("
+                UPDATE tblOrders
+                SET order_status_id = :order_status_id
+                WHERE order_id = :order_id
+                  AND company_id = :company_id
+            ");
+            $update->bindValue(':order_status_id', (int)$orderStatus['id'], PDO::PARAM_INT);
+            $update->bindValue(':order_id', $order_id, PDO::PARAM_INT);
+            $update->bindValue(':company_id', $company_id, PDO::PARAM_INT);
+            $update->execute();
+        }
+
+        addOrderActivity($order_id, $company_id, 5, 'Quote converted to order', $_SESSION['session_user_id'], 0, 'quote_converted_to_order');
+
+        echo json_encode([
+            'success' => true,
+            'message' => 'Quote converted to order.',
+            'order_status_id' => (int)$orderStatus['id'],
+            'order_status' => $orderStatus['description'],
+            'history' => getProcessOrderWorkflowActivity($conn, $order_id, $company_id)
+        ]);
+        exit;
+    } catch (Exception $e) {
+        error_log('convert_quote_to_order error: ' . $e->getMessage());
+        echo json_encode(['success' => false, 'message' => 'Server error while converting quote.']);
         exit;
     }
 }

@@ -84,6 +84,9 @@ function PrintPurchaseDel(order_id) {
 function PrintSalesOrder(order_id) {
     window.open('pdf/sales_order_v1.php?order_id=' + order_id , '_blank');
 }
+function PrintSalesQuote(order_id) {
+    window.open('pdf/sales_quote_v1.php?order_id=' + order_id , '_blank');
+}
 function PrintSalesInvoice(order_id) {
     window.open('pdf/sales_invoice_v1.php?order_id=' + order_id , '_blank');
 }

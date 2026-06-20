@@ -86,6 +86,91 @@ function buildPurchaseActivityDescriptions($oldPurchase, $newData, $order_date_r
 
     return $descriptions;
 }
+
+function purchaseProcessActivityActions() {
+    return array(
+        'purchase_delivery_docket_printed' => 'Printed: Purchase delivery docket',
+        'purchase_confirmation_requested' => 'Purchase order confirmation requested',
+        'purchase_confirmation_requested_cleared' => 'Purchase order confirmation request cleared',
+        'purchase_order_printed' => 'Printed: Purchase order',
+        'purchase_order_emailed' => 'Email sent: Purchase order'
+    );
+}
+
+function purchaseProcessActivityAliases() {
+    return array(
+        'purchase_delivery_docket_printed' => array('Printed: Purchase delivery docket', 'Printed Purchase delivery docket'),
+        'purchase_confirmation_requested' => array('Purchase order confirmation requested', 'Purchase order confirmation request cleared'),
+        'purchase_confirmation_requested_cleared' => array('Purchase order confirmation request cleared'),
+        'purchase_order_printed' => array('Printed: Purchase order', 'Printed Purchase order'),
+        'purchase_order_emailed' => array('Email sent: Purchase order', 'Email sent Purchase order')
+    );
+}
+
+function getPurchaseProcessActivity($conn, $pid, $company_id) {
+    $aliases = purchaseProcessActivityAliases();
+    $history = array(
+        'purchase_delivery_docket_printed' => null,
+        'purchase_confirmation_requested' => null,
+        'purchase_order_printed' => null,
+        'purchase_order_emailed' => null
+    );
+
+    $params = array(
+        ':pid' => $pid,
+        ':company_id' => $company_id
+    );
+    $likeParts = array();
+    $index = 0;
+
+    foreach ($aliases as $typeAliases) {
+        foreach ($typeAliases as $alias) {
+            $key = ':label_' . $index;
+            $likeParts[] = "description LIKE " . $key;
+            $params[$key] = $alias . '%';
+            $index++;
+        }
+    }
+
+    $stmt = $conn->prepare("
+        SELECT action_date, user_id, description
+        FROM tblPurchaseActivity
+        WHERE pid = :pid
+          AND company_id = :company_id
+          AND (" . implode(' OR ', $likeParts) . ")
+        ORDER BY action_date DESC, id DESC
+    ");
+    foreach ($params as $key => $value) {
+        $stmt->bindValue($key, $value);
+    }
+    $stmt->execute();
+
+    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+        $workflowType = '';
+        foreach ($aliases as $type => $typeAliases) {
+            foreach ($typeAliases as $alias) {
+                if (strpos($row['description'], $alias) === 0) {
+                    $workflowType = $type;
+                    break 2;
+                }
+            }
+        }
+
+        if ($workflowType === 'purchase_confirmation_requested_cleared') {
+            $workflowType = 'purchase_confirmation_requested';
+        }
+
+        if (!empty($workflowType) && array_key_exists($workflowType, $history) && $history[$workflowType] === null) {
+            $history[$workflowType] = array(
+                'description' => $row['description'],
+                'date' => date('d/m/Y g:i A', (int)$row['action_date']),
+                'user' => getUserFullName($row['user_id'])
+            );
+        }
+    }
+
+    return $history;
+}
 	
 
 if (isset($data_raw['action']) && $data_raw['action'] == 'read_purchase') {
@@ -156,6 +241,60 @@ if (isset($data_raw['action']) && $data_raw['action'] == 'read_purchase') {
     // Return JSON response
     header('Content-Type: application/json');
     echo json_encode($return_arr);
+}
+
+if (isset($data_raw['action']) && $data_raw['action'] == 'record_purchase_process_activity') {
+    header('Content-Type: application/json');
+
+    $database = new Database();
+    $conn = $database->connect();
+    $company_id = (int)$_SESSION['session_company_id'];
+    $pid = isset($data_raw['pid']) ? (int)$data_raw['pid'] : 0;
+    $workflow_type = isset($data_raw['workflow_type']) ? trim((string)$data_raw['workflow_type']) : '';
+    $actions = purchaseProcessActivityActions();
+
+    if ($pid <= 0 || !array_key_exists($workflow_type, $actions)) {
+        echo json_encode(['success' => false, 'message' => 'Invalid purchase process activity.']);
+        exit;
+    }
+
+    $stmt = $conn->prepare("SELECT id FROM tblPurchaseOrders WHERE id = :pid AND company_id = :company_id LIMIT 1");
+    $stmt->bindValue(':pid', $pid, PDO::PARAM_INT);
+    $stmt->bindValue(':company_id', $company_id, PDO::PARAM_INT);
+    $stmt->execute();
+
+    if (!$stmt->fetch(PDO::FETCH_ASSOC)) {
+        echo json_encode(['success' => false, 'message' => 'Purchase order not found.']);
+        exit;
+    }
+
+    addPurchaseActivity($pid, $company_id, 5, $actions[$workflow_type], $_SESSION['session_user_id'], 0);
+
+    echo json_encode([
+        'success' => true,
+        'history' => getPurchaseProcessActivity($conn, $pid, $company_id)
+    ]);
+    exit;
+}
+
+if (isset($data_raw['action']) && $data_raw['action'] == 'get_purchase_process_activity') {
+    header('Content-Type: application/json');
+
+    $database = new Database();
+    $conn = $database->connect();
+    $company_id = (int)$_SESSION['session_company_id'];
+    $pid = isset($data_raw['pid']) ? (int)$data_raw['pid'] : 0;
+
+    if ($pid <= 0) {
+        echo json_encode(['success' => false, 'message' => 'Invalid purchase order id.']);
+        exit;
+    }
+
+    echo json_encode([
+        'success' => true,
+        'history' => getPurchaseProcessActivity($conn, $pid, $company_id)
+    ]);
+    exit;
 }
 
     
