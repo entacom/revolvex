@@ -698,6 +698,15 @@
     box-shadow: 0 12px 28px rgba(31, 84, 140, 0.12);
 }
 
+.purchase-activity-panel {
+    background: linear-gradient(135deg, #f8fbff 0%, #ffffff 100%);
+    border: 1px solid #d6e1ec;
+    border-left: 4px solid #2f9c68;
+    border-radius: 8px;
+    padding: 0.9rem;
+    box-shadow: 0 12px 28px rgba(31, 45, 61, 0.1);
+}
+
 .purchase-files-header {
     display: flex;
     align-items: center;
@@ -816,6 +825,16 @@
     font-size: 0.78rem;
     font-weight: 800;
     white-space: nowrap;
+}
+
+.purchase-files-empty {
+    border: 1px dashed #b8d8f4;
+    border-radius: 7px;
+    background: rgba(255, 255, 255, 0.75);
+    color: #60758d;
+    font-size: 0.85rem;
+    padding: 0.75rem;
+    text-align: center;
 }
 
 

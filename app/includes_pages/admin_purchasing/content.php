@@ -526,36 +526,56 @@ if ($sub_tab_id == 'purchase_activity') {
             <div class="col-lg-12">
                 <div class="card">
                     <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <h5 class="card-title mb-0">Purchase Activity</h5>
-                            <button onclick="AddPurchaseActivityModal()" class="btn btn-sm btn-outline-secondary">Add Activity</button>
-                        </div>
-                        <div class="list-group">';
+                        <div class="row g-3 align-items-start">
+                            <div class="col-xl-8">
+                                <div class="purchase-activity-panel">
+                                    <div class="purchase-files-header">
+                                        <div>
+                                            <div class="purchase-files-eyebrow">Timeline</div>
+                                            <h6 class="mb-0">Purchase Activity</h6>
+                                        </div>
+                                        <button onclick="AddPurchaseActivityModal()" class="btn btn-sm btn-outline-secondary">Add Activity</button>
+                                    </div>
+                                    <div class="table-responsive">
+                                    <table class="table table-sm order-activity-table align-middle mb-0">
+                                        <thead>
+                                            <tr>
+                                                <th class="activity-col-status">Type</th>
+                                                <th class="activity-col-date">Date</th>
+                                                <th class="activity-col-user">User</th>
+                                                <th>Action</th>
+                                                <th class="activity-col-buttons"></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>';
 
     if ($result->rowCount() === 0) {
-        $data .= '<div class="list-group-item text-muted">No activity recorded yet.</div>';
+        $data .= '<tr><td colspan="5" class="text-muted">No activity recorded yet.</td></tr>';
     }
 
     while ($row = $result->fetch(PDO::FETCH_ASSOC)) {
-        $description = htmlspecialchars($row['description']);
-        $userName = htmlspecialchars((string)getUserFullName($row['user_id']));
-        $data .= '<div class="list-group-item list-group-item-action">';
-        $data .= '<div class="row align-items-center">';
-        $data .= '<div class="col-md-2 sm-text"><span class="badge bg-success"><i class="bi bi-check-circle me-1"></i> Activity</span></div>';
-        $data .= '<div class="col-md-2 sm-text">' . date_c($row['action_date']) . '</div>';
-        $data .= '<div class="col-md-2 sm-text">' . $userName . '</div>';
-        $data .= '<div class="col-md-5 sm-text">' . $description . '</div>';
-        $data .= '<div class="col-md-1 sm-text"><button class="btn btn-sm btn-outline-secondary" onclick="EditPurchaseActivity(' . $row['id'] . ')"><i class="bx bx-edit"></i></button><button class="btn btn-sm btn-outline-secondary" onclick="delPurchaseActivity(' . $row['id'] . ')"><i class="bx bxs-trash"></i></button></div>';
-        $data .= '</div>';
-        $data .= '</div>';
+        $description = htmlspecialchars($row['description'], ENT_QUOTES, 'UTF-8');
+        $actionDate = !empty($row['action_date']) ? date('d/m/y g:i A', (int)$row['action_date']) : '';
+        $userName = htmlspecialchars((string)getUserFullName($row['user_id']), ENT_QUOTES, 'UTF-8');
+        $typeBadge = '<span class="badge rounded-pill activity-badge"><i class="bx bx-check-circle"></i> Activity</span>';
+        $buttons = '<button class="btn btn-xs btn-outline-secondary" onclick="EditPurchaseActivity(' . (int)$row['id'] . ')" title="Edit activity"><i class="bx bx-edit"></i></button>';
+        $buttons .= '<button class="btn btn-xs btn-outline-danger" onclick="delPurchaseActivity(' . (int)$row['id'] . ')" title="Delete activity"><i class="bx bxs-trash"></i></button>';
+
+        $data .= '<tr>';
+        $data .= '<td>' . $typeBadge . '</td>';
+        $data .= '<td class="text-nowrap">' . $actionDate . '</td>';
+        $data .= '<td class="text-nowrap">' . $userName . '</td>';
+        $data .= '<td class="activity-description">' . $description . '</td>';
+        $data .= '<td class="text-end"><div class="activity-actions">' . $buttons . '</div></td>';
+        $data .= '</tr>';
     }
 
-    $data .= '</div>';
+    $data .= '</tbody></table></div></div></div><div class="col-xl-4">';
+    $data .= '<div class="purchase-files-panel">';
+    $data .= '<div class="purchase-files-header"><div><div class="purchase-files-eyebrow">Documents</div><h6 class="mb-0">Saved PO Files</h6></div><span class="purchase-files-count">' . count($purchaseFiles) . '</span></div>';
+    $data .= '<div class="purchase-files-list">';
 
     if (!empty($purchaseFiles)) {
-        $data .= '<div class="purchase-files-panel mt-4">';
-        $data .= '<div class="purchase-files-header"><div><div class="purchase-files-eyebrow">Documents</div><h6 class="mb-0">Saved PO Files</h6></div><span class="purchase-files-count">' . count($purchaseFiles) . '</span></div>';
-        $data .= '<div class="purchase-files-list">';
         foreach ($purchaseFiles as $file) {
             $fileFolder = (!empty($file['path']) && $file['path'] !== 'aws_S3_bucket') ? trim($file['path'], '/') : 'purchase_files';
             $downloadUrl = generatePreSignedUrl($fileFolder . '/' . $file['filename'], $file['description']);
@@ -565,8 +585,11 @@ if ($sub_tab_id == 'purchase_activity') {
             $data .= '<span class="purchase-file-open">Open file <i class="bi bi-box-arrow-up-right"></i></span>';
             $data .= '</a>';
         }
-        $data .= '</div></div>';
+    } else {
+        $data .= '<div class="purchase-files-empty">No saved files yet.</div>';
     }
+
+    $data .= '</div></div></div></div>';
 
     $data .= '</div></div></div></div></div>';
     sendJsonResponse(['html' => $data]);
