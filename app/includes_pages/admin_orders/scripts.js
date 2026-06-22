@@ -1461,8 +1461,47 @@ function renderProcessOrderActivity(history) {
 
 let processOrderCurrentSummary = {};
 
+function getVisibleProcessOrderSummaryFallback() {
+    const packs = new Set();
+    let weight = 0;
+    const parts = new Set();
+
+    $('#jobs_tab_body .droppable[data-pack-id]').each(function() {
+        const packId = String($(this).data('pack-id') || '').trim();
+        if (packId && packId !== '0') {
+            packs.add(packId);
+        }
+
+        const weightText = $(this).find('.col-3').first().text().replace(/[^0-9.-]/g, '');
+        const packWeight = parseFloat(weightText);
+        if (!Number.isNaN(packWeight)) {
+            weight += packWeight;
+        }
+    });
+
+    $('#jobs_tab_body .droppable[data-pack-id] .col-3, #jobs_tab_body .hover-row .col-1, #jobs_tab_body .hover-row .col-2').each(function() {
+        const text = $.trim($(this).text());
+        if (/^[A-Z]{1,4}\d{3,}/i.test(text)) {
+            parts.add(text);
+        }
+    });
+
+    return {
+        packs: packs.size,
+        manufactured_items: parts.size,
+        total_items: parts.size,
+        weight_kg: Math.round(weight * 10) / 10
+    };
+}
+
 function renderProcessOrderSummary(summary) {
-    const data = summary || {};
+    let data = summary || {};
+    if (!Number(data.packs || 0) && !Number(data.total_items || 0) && !Number(data.weight_kg || 0)) {
+        const fallback = getVisibleProcessOrderSummaryFallback();
+        if (fallback.packs || fallback.total_items || fallback.weight_kg) {
+            data = fallback;
+        }
+    }
     processOrderCurrentSummary = data;
     const values = [
         data.packs || 0,
