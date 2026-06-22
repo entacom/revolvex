@@ -375,78 +375,65 @@ function getProcessOrderSummary($conn, $order_id, $company_id) {
         'weight_kg' => 0
     );
 
-    $orderStmt = $conn->prepare("SELECT order_id FROM tblOrders WHERE order_id = :order_id AND company_id = :company_id LIMIT 1");
-    $orderStmt->bindValue(':order_id', $order_id, PDO::PARAM_INT);
-    $orderStmt->bindValue(':company_id', $company_id, PDO::PARAM_INT);
-    $orderStmt->execute();
-    if (!$orderStmt->fetch(PDO::FETCH_ASSOC)) {
-        return $summary;
-    }
-
     $packStmt = $conn->prepare("
-        SELECT COUNT(DISTINCT pack_id)
-        FROM tblOrderSubItems
+        SELECT pack_number
+        FROM tblOrderPacks
         WHERE order_id = :order_id
-          AND pack_id > 0
+          AND company_id = :company_id
+        ORDER BY pack_number
     ");
     $packStmt->bindValue(':order_id', $order_id, PDO::PARAM_INT);
+    $packStmt->bindValue(':company_id', $company_id, PDO::PARAM_INT);
     $packStmt->execute();
-    $summary['packs'] = (int)$packStmt->fetchColumn();
+    $packNumbers = $packStmt->fetchAll(PDO::FETCH_COLUMN);
+    $summary['packs'] = count($packNumbers);
 
     if ($summary['packs'] <= 0) {
         $packFallbackStmt = $conn->prepare("
-            SELECT COUNT(*)
-            FROM tblOrderPacks
+            SELECT DISTINCT pack_id
+            FROM tblOrderSubItems
             WHERE order_id = :order_id
+              AND pack_id > 0
+            ORDER BY pack_id
         ");
         $packFallbackStmt->bindValue(':order_id', $order_id, PDO::PARAM_INT);
         $packFallbackStmt->execute();
-        $summary['packs'] = (int)$packFallbackStmt->fetchColumn();
+        $packNumbers = $packFallbackStmt->fetchAll(PDO::FETCH_COLUMN);
+        $summary['packs'] = count($packNumbers);
     }
 
     $itemStmt = $conn->prepare("
-        SELECT
-            COUNT(*) AS total_items,
-            SUM(CASE WHEN i.group_id = 1 THEN 1 ELSE 0 END) AS manufactured_items
-        FROM tblOrderItems oi
-        LEFT JOIN tblInventory i
-          ON i.part_number = oi.part_number
-         AND i.company_id = :company_id
-        WHERE oi.order_id = :order_id
+        SELECT part_number
+        FROM tblOrderItems
+        WHERE order_id = :order_id
     ");
     $itemStmt->bindValue(':order_id', $order_id, PDO::PARAM_INT);
-    $itemStmt->bindValue(':company_id', $company_id, PDO::PARAM_INT);
     $itemStmt->execute();
-    $itemRow = $itemStmt->fetch(PDO::FETCH_ASSOC);
-    if ($itemRow) {
-        $summary['total_items'] = (int)$itemRow['total_items'];
-        $summary['manufactured_items'] = (int)$itemRow['manufactured_items'];
-    }
+    $partNumbers = $itemStmt->fetchAll(PDO::FETCH_COLUMN);
+    $summary['total_items'] = count($partNumbers);
 
-    if ($summary['total_items'] > 0 && $summary['manufactured_items'] <= 0) {
-        $manufacturedFallbackStmt = $conn->prepare("
-            SELECT part_number
-            FROM tblOrderItems
-            WHERE order_id = :order_id
-        ");
-        $manufacturedFallbackStmt->bindValue(':order_id', $order_id, PDO::PARAM_INT);
-        $manufacturedFallbackStmt->execute();
-
-        while ($partNumber = $manufacturedFallbackStmt->fetchColumn()) {
-            if ((int)getTabFieCol('group_id', 'tblInventory', 'part_number', $partNumber, $company_id) === 1) {
-                $summary['manufactured_items']++;
-            }
+    foreach ($partNumbers as $partNumber) {
+        if ((int)getTabFieCol('group_id', 'tblInventory', 'part_number', $partNumber, $company_id) === 1) {
+            $summary['manufactured_items']++;
         }
     }
 
-    $weightStmt = $conn->prepare("
-        SELECT COALESCE(SUM(weight), 0)
-        FROM tblOrderSubItems
-        WHERE order_id = :order_id
-    ");
-    $weightStmt->bindValue(':order_id', $order_id, PDO::PARAM_INT);
-    $weightStmt->execute();
-    $summary['weight_kg'] = round((float)$weightStmt->fetchColumn(), 1);
+    foreach ($packNumbers as $packNumber) {
+        $summary['weight_kg'] += (float)getSumWei($packNumber, $company_id, $order_id);
+    }
+
+    if ($summary['weight_kg'] <= 0) {
+        $weightStmt = $conn->prepare("
+            SELECT COALESCE(SUM(weight), 0)
+            FROM tblOrderSubItems
+            WHERE order_id = :order_id
+        ");
+        $weightStmt->bindValue(':order_id', $order_id, PDO::PARAM_INT);
+        $weightStmt->execute();
+        $summary['weight_kg'] = (float)$weightStmt->fetchColumn();
+    }
+
+    $summary['weight_kg'] = round((float)$summary['weight_kg'], 1);
 
     return $summary;
 }
