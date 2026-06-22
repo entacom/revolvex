@@ -147,6 +147,23 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             if (!in_array($finished_filter, array('all', '0', '1'), true)) {
                 $finished_filter = 'all';
             }
+            $group_filter = isset($_POST['group_filter']) ? $_POST['group_filter'] : 'all';
+            if ($group_filter !== 'all' && !ctype_digit((string)$group_filter)) {
+                $group_filter = 'all';
+            }
+            $coil_closed_filter = isset($_POST['coil_closed_filter']) ? $_POST['coil_closed_filter'] : 'all';
+            if (!in_array($coil_closed_filter, array('all', '0', '1'), true)) {
+                $coil_closed_filter = 'all';
+            }
+
+            $groupOptions = '';
+            $groupStmt = $conn->prepare("SELECT id, description FROM tblInventoryGroup WHERE company_id = :company_id AND active = 1 ORDER BY description");
+            $groupStmt->bindValue(':company_id', $_SESSION['session_company_id'], PDO::PARAM_INT);
+            $groupStmt->execute();
+            while ($groupRow = $groupStmt->fetch(PDO::FETCH_ASSOC)) {
+                $selected = ((string)$group_filter === (string)$groupRow['id']) ? ' selected' : '';
+                $groupOptions .= '<option value="' . htmlspecialchars($groupRow['id']) . '"' . $selected . '>' . htmlspecialchars($groupRow['description']) . '</option>';
+            }
 
             // Main inventory query
             $inventory_query = "
@@ -157,25 +174,42 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             if ($finished_filter !== 'all') {
                 $inventory_query .= " AND item_finished = :item_finished";
             }
+            if ($group_filter !== 'all') {
+                $inventory_query .= " AND group_id = :group_id";
+            }
             $inventory_query .= " ORDER BY part_number";
             $inventory_statement = $conn->prepare($inventory_query);
             $inventory_statement->bindParam(':company_id', $_SESSION['session_company_id']);
             if ($finished_filter !== 'all') {
                 $inventory_statement->bindValue(':item_finished', (int)$finished_filter, PDO::PARAM_INT);
             }
+            if ($group_filter !== 'all') {
+                $inventory_statement->bindValue(':group_id', (int)$group_filter, PDO::PARAM_INT);
+            }
             $inventory_statement->execute();
 
             $output = '
                 <div class="card">
                     <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
                             <h5 class="card-title mb-0">Stock Report</h5>
                             <div class="d-flex align-items-center gap-2">
+                                <label for="stock_group_filter" class="form-label mb-0 small text-muted">Group</label>
+                                <select id="stock_group_filter" class="form-select form-select-sm" onchange="StockReport()">
+                                    <option value="all"' . ($group_filter === 'all' ? ' selected' : '') . '>All Groups</option>
+                                    ' . $groupOptions . '
+                                </select>
                                 <label for="stock_finished_filter" class="form-label mb-0 small text-muted">Finished</label>
-                                <select id="stock_finished_filter" class="form-select form-select-sm" onchange="StockReport(this.value)">
+                                <select id="stock_finished_filter" class="form-select form-select-sm" onchange="StockReport()">
                                     <option value="all"' . ($finished_filter === 'all' ? ' selected' : '') . '>All</option>
                                     <option value="1"' . ($finished_filter === '1' ? ' selected' : '') . '>Finished</option>
                                     <option value="0"' . ($finished_filter === '0' ? ' selected' : '') . '>Not Finished</option>
+                                </select>
+                                <label for="stock_coil_closed_filter" class="form-label mb-0 small text-muted">Coil Closed</label>
+                                <select id="stock_coil_closed_filter" class="form-select form-select-sm" onchange="StockReport()">
+                                    <option value="all"' . ($coil_closed_filter === 'all' ? ' selected' : '') . '>All</option>
+                                    <option value="1"' . ($coil_closed_filter === '1' ? ' selected' : '') . '>Closed</option>
+                                    <option value="0"' . ($coil_closed_filter === '0' ? ' selected' : '') . '>Open</option>
                                 </select>
                             </div>
                         </div>
@@ -184,7 +218,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                 <tr>
                                     <th>Part Number</th>
                                     <th>Description</th>
+                                    <th>Group</th>
                                     <th class="text-center">Finished</th>
+                                    <th class="text-center">Coil Closed</th>
                                     <th class="text-end">Mtrs</th>
                                     <th class="text-end">Mtr/Unit</th>
                                     <th class="text-end">Stock</th>
@@ -196,14 +232,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             ';
             while ($inventory_row = $inventory_statement->fetch(PDO::FETCH_ASSOC)) {
                 $finished_tick = !empty($inventory_row['item_finished']) ? '<i class="bi bi-check-circle-fill text-success"></i>' : '';
+                $groupName = getTabFieCol('description', 'tblInventoryGroup', 'id', $inventory_row['group_id'], $_SESSION['session_company_id']);
                 $output .= '<tr>
                                 <td>' . htmlspecialchars($inventory_row['part_number']) . '</td>
                                 <td>' . htmlspecialchars($inventory_row['description']) . '</td>
+                                <td>' . htmlspecialchars($groupName) . '</td>
                                 <td class="text-center">' . $finished_tick . '</td>
+                                <td class="text-center"></td>
                                 <td class="text-end"></td>
                                 <td class="text-end"></td>
                                 <td class="text-end"></td>
-                                <td></td>
                                 <td></td>
                             </tr>';
                 $items_query = "
@@ -211,9 +249,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     FROM tblInventoryItems
                     WHERE inventory_id = :inventory_id
                 ";
+                if ($coil_closed_filter !== 'all') {
+                    $items_query .= " AND coil_finished = :coil_finished";
+                }
 
                 $items_statement = $conn->prepare($items_query);
                 $items_statement->bindParam(':inventory_id', $inventory_row['id']);
+                if ($coil_closed_filter !== 'all') {
+                    $items_statement->bindValue(':coil_finished', (int)$coil_closed_filter, PDO::PARAM_INT);
+                }
                 $items_statement->execute();
 
                 while ($item_row = $items_statement->fetch(PDO::FETCH_ASSOC)) {
@@ -230,6 +274,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
                     $value_total = $ratio * $buy_rate;
                     $original_received_qty = isset($item_row['purchased_qty']) ? $item_row['purchased_qty'] : 0;
+                    $closed_tick = !empty($item_row['coil_finished']) ? '<i class="bi bi-check-circle-fill text-success"></i>' : '';
                     // --- AMENDED BLOCK END ---
 
                     // Display sub-item row with access to all data
@@ -238,7 +283,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                     <td class="text-muted">'
                                         . htmlspecialchars($item_row['serial_number'])
                                         . ' (' . htmlspecialchars($item_row['part_number']) . ')</td>
+                                    <td></td>
                                     <td class="text-center"></td>
+                                    <td class="text-center">' . $closed_tick . '</td>
                                     <td class="text-end">' . htmlspecialchars($item_row['qty']) . ' /FIX LTR ' . $original_received_qty . '</td>
                                     <td class="text-end">' . htmlspecialchars($inventory_row['metre_unit']) . '</td>
                                     <td class="text-end">' . (($metre_unit > 0) ? number_format($ratio, 2) : 'N/A') . '</td>

@@ -93,10 +93,12 @@ function filterReportByDateAndPartNumber(fromDate, toDate, partNumber) {
     });
 }
 
-function StockReport(finishedFilter) {
+function StockReport(finishedFilter, groupFilter, coilClosedFilter) {
     var data = {
         stock_report: true,
-        finished_filter: finishedFilter || $('#stock_finished_filter').val() || 'all'
+        finished_filter: finishedFilter || $('#stock_finished_filter').val() || 'all',
+        group_filter: groupFilter || $('#stock_group_filter').val() || 'all',
+        coil_closed_filter: coilClosedFilter || $('#stock_coil_closed_filter').val() || 'all'
     };
     $.ajax({
         type: "POST",
@@ -105,6 +107,8 @@ function StockReport(finishedFilter) {
         success: function(response) {
             $('#body_content').html(response);
             $('#stock_finished_filter').val(data.finished_filter);
+            $('#stock_group_filter').val(data.group_filter);
+            $('#stock_coil_closed_filter').val(data.coil_closed_filter);
         },
         error: function(xhr, status, error) {
             console.error("Error receiving data:", error);

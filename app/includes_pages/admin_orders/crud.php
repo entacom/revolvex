@@ -227,6 +227,120 @@ function findOrderStatusIdByNames($conn, $company_id, $statusNames) {
     return $stmt->fetch(PDO::FETCH_ASSOC);
 }
 
+function orderItemColumnExists($conn, $columnName) {
+    static $cache = array();
+    $key = 'tblOrderItems.' . $columnName;
+
+    if (array_key_exists($key, $cache)) {
+        return $cache[$key];
+    }
+
+    $stmt = $conn->prepare("SHOW COLUMNS FROM tblOrderItems LIKE :column_name");
+    $stmt->bindValue(':column_name', $columnName);
+    $stmt->execute();
+    $cache[$key] = (bool)$stmt->fetch(PDO::FETCH_ASSOC);
+
+    return $cache[$key];
+}
+
+function orderCompletionColumnsExist($conn) {
+    return orderItemColumnExists($conn, 'item_completed');
+}
+
+function getOrderCompletionSummary($conn, $order_id, $company_id) {
+    $summary = array(
+        'completed' => 0,
+        'total' => 0,
+        'ratio' => '0/0',
+        'complete' => false,
+        'warning' => false
+    );
+
+    if (!orderCompletionColumnsExist($conn)) {
+        return $summary;
+    }
+
+    $stmt = $conn->prepare("
+        SELECT
+            COUNT(*) AS total_items,
+            COALESCE(SUM(CASE WHEN item_completed = 1 THEN 1 ELSE 0 END), 0) AS completed_items
+        FROM tblOrderItems
+        WHERE order_id = :order_id
+          AND company_id = :company_id
+    ");
+    $stmt->bindValue(':order_id', $order_id, PDO::PARAM_INT);
+    $stmt->bindValue(':company_id', $company_id, PDO::PARAM_INT);
+    $stmt->execute();
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    $summary['total'] = isset($row['total_items']) ? (int)$row['total_items'] : 0;
+    $summary['completed'] = isset($row['completed_items']) ? (int)$row['completed_items'] : 0;
+    $summary['ratio'] = $summary['completed'] . '/' . $summary['total'];
+    $summary['complete'] = $summary['total'] > 0 && $summary['completed'] >= $summary['total'];
+
+    $dateStmt = $conn->prepare("
+        SELECT delivery_date
+        FROM tblOrders
+        WHERE order_id = :order_id
+          AND company_id = :company_id
+        LIMIT 1
+    ");
+    $dateStmt->bindValue(':order_id', $order_id, PDO::PARAM_INT);
+    $dateStmt->bindValue(':company_id', $company_id, PDO::PARAM_INT);
+    $dateStmt->execute();
+    $deliveryDate = (int)$dateStmt->fetchColumn();
+    $tomorrowEnd = strtotime('tomorrow 23:59:59');
+    $summary['warning'] = $summary['total'] > 0 && !$summary['complete'] && $deliveryDate > 0 && $deliveryDate <= $tomorrowEnd;
+
+    return $summary;
+}
+
+function refreshOrderCompletionStatus($conn, $order_id, $company_id, $user_id) {
+    $summary = getOrderCompletionSummary($conn, $order_id, $company_id);
+    if (!$summary['complete']) {
+        return $summary;
+    }
+
+    $awaitingStatus = findOrderStatusIdByNames($conn, $company_id, array(
+        'Awaiting Delivery/Collection',
+        'Awaiting Delivery',
+        'Awaiting Collection'
+    ));
+
+    if (!$awaitingStatus) {
+        return $summary;
+    }
+
+    $currentStmt = $conn->prepare("
+        SELECT order_status_id
+        FROM tblOrders
+        WHERE order_id = :order_id
+          AND company_id = :company_id
+        LIMIT 1
+    ");
+    $currentStmt->bindValue(':order_id', $order_id, PDO::PARAM_INT);
+    $currentStmt->bindValue(':company_id', $company_id, PDO::PARAM_INT);
+    $currentStmt->execute();
+    $currentStatusId = (int)$currentStmt->fetchColumn();
+
+    if ($currentStatusId !== (int)$awaitingStatus['id']) {
+        $update = $conn->prepare("
+            UPDATE tblOrders
+            SET order_status_id = :order_status_id
+            WHERE order_id = :order_id
+              AND company_id = :company_id
+        ");
+        $update->bindValue(':order_status_id', (int)$awaitingStatus['id'], PDO::PARAM_INT);
+        $update->bindValue(':order_id', $order_id, PDO::PARAM_INT);
+        $update->bindValue(':company_id', $company_id, PDO::PARAM_INT);
+        $update->execute();
+
+        addOrderActivity($order_id, $company_id, 5, 'Order complete: moved to ' . $awaitingStatus['description'], $user_id, 0, 'order_items_completed');
+    }
+
+    return $summary;
+}
+
 function processOrderWorkflowActions() {
     return array(
         'upload_original_opened' => 'Upload original opened',
@@ -475,6 +589,89 @@ if (isset($_POST['action']) && $_POST['action'] === 'toggle_order_item_tag') {
     } else {
         echo json_encode(['success' => false, 'message' => 'Query failed']);
     }
+    exit;
+}
+
+if (isset($_POST['action']) && $_POST['action'] === 'toggle_order_item_completed') {
+    header('Content-Type: application/json');
+
+    if (!isset($_POST['item_id']) || !is_numeric($_POST['item_id'])) {
+        echo json_encode(['success' => false, 'message' => 'Invalid item ID']);
+        exit;
+    }
+
+    $database = new Database();
+    $conn = $database->connect();
+
+    if (!orderCompletionColumnsExist($conn)) {
+        echo json_encode(['success' => false, 'message' => 'Missing tblOrderItems.item_completed column.']);
+        exit;
+    }
+
+    $item_id = (int) $_POST['item_id'];
+    $completed = !empty($_POST['completed']) ? 1 : 0;
+    $company_id = (int)$_SESSION['session_company_id'];
+
+    $stmt = $conn->prepare("
+        SELECT id, order_id, part_number, description, item_completed
+        FROM tblOrderItems
+        WHERE id = :id
+          AND company_id = :company_id
+        LIMIT 1
+    ");
+    $stmt->bindValue(':id', $item_id, PDO::PARAM_INT);
+    $stmt->bindValue(':company_id', $company_id, PDO::PARAM_INT);
+    $stmt->execute();
+    $item = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$item) {
+        echo json_encode(['success' => false, 'message' => 'Order item not found.']);
+        exit;
+    }
+
+    $updateFields = "item_completed = :item_completed";
+    if (orderItemColumnExists($conn, 'item_completed_at')) {
+        $updateFields .= ", item_completed_at = :item_completed_at";
+    }
+    if (orderItemColumnExists($conn, 'item_completed_by')) {
+        $updateFields .= ", item_completed_by = :item_completed_by";
+    }
+
+    $update = $conn->prepare("
+        UPDATE tblOrderItems
+        SET {$updateFields}
+        WHERE id = :id
+          AND company_id = :company_id
+    ");
+    $update->bindValue(':item_completed', $completed, PDO::PARAM_INT);
+    if (orderItemColumnExists($conn, 'item_completed_at')) {
+        $update->bindValue(':item_completed_at', $completed ? time() : null, $completed ? PDO::PARAM_INT : PDO::PARAM_NULL);
+    }
+    if (orderItemColumnExists($conn, 'item_completed_by')) {
+        $update->bindValue(':item_completed_by', $completed ? (int)$_SESSION['session_user_id'] : null, $completed ? PDO::PARAM_INT : PDO::PARAM_NULL);
+    }
+    $update->bindValue(':id', $item_id, PDO::PARAM_INT);
+    $update->bindValue(':company_id', $company_id, PDO::PARAM_INT);
+    $update->execute();
+
+    $partNumber = !empty($item['part_number']) ? $item['part_number'] : ('item #' . $item_id);
+    addOrderActivity(
+        (int)$item['order_id'],
+        $company_id,
+        5,
+        ($completed ? 'Order item completed: ' : 'Order item reopened: ') . $partNumber,
+        $_SESSION['session_user_id'],
+        0,
+        'order_item_completed'
+    );
+
+    $summary = refreshOrderCompletionStatus($conn, (int)$item['order_id'], $company_id, (int)$_SESSION['session_user_id']);
+
+    echo json_encode([
+        'success' => true,
+        'completed' => $completed,
+        'summary' => $summary
+    ]);
     exit;
 }
 
@@ -1190,6 +1387,7 @@ if (isset($data_raw['action']) && $data_raw['action'] == 'read_order') {
                 'order_invoiced' => getTabFieCol('transaction_uid', 'tblInvoice', 'order_id', $data['order_id'], $_SESSION['session_company_id']),
                 'order_invoiced_date' => getTabFieCol('invoice_date', 'tblInvoice', 'order_id', $data['order_id'], $_SESSION['session_company_id']),
                 'price_level' => $row['price_level'],
+                'completion' => getOrderCompletionSummary($conn, (int)$data['order_id'], (int)$_SESSION['session_company_id']),
 				
             );
             array_push($return_arr, $row_data);

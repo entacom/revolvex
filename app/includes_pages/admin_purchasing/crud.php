@@ -138,6 +138,163 @@ function markPurchaseOrderSent($conn, $pid, $company_id) {
     addPurchaseActivity($pid, $company_id, 5, 'Status changed to ' . $sentStatus['description'] . ' after purchase order sent', $_SESSION['session_user_id'], 0);
 }
 
+function purchaseOrderItemColumnExists($conn, $columnName) {
+    static $cache = array();
+    $key = 'tblOrderItems.' . $columnName;
+    if (array_key_exists($key, $cache)) {
+        return $cache[$key];
+    }
+    $stmt = $conn->prepare("SHOW COLUMNS FROM tblOrderItems LIKE :column_name");
+    $stmt->bindValue(':column_name', $columnName);
+    $stmt->execute();
+    $cache[$key] = (bool)$stmt->fetch(PDO::FETCH_ASSOC);
+    return $cache[$key];
+}
+
+function purchaseFindOrderStatusByNames($conn, $company_id, $statusNames) {
+    $placeholders = array();
+    $params = array(':company_id' => $company_id);
+    foreach ($statusNames as $index => $statusName) {
+        $key = ':status_' . $index;
+        $placeholders[] = $key;
+        $params[$key] = strtolower($statusName);
+    }
+
+    $stmt = $conn->prepare("
+        SELECT id, description
+        FROM tblOrderStatus
+        WHERE company_id = :company_id
+          AND active = 1
+          AND LOWER(TRIM(description)) IN (" . implode(',', $placeholders) . ")
+        ORDER BY ordering ASC, id ASC
+        LIMIT 1
+    ");
+    foreach ($params as $key => $value) {
+        $stmt->bindValue($key, $value);
+    }
+    $stmt->execute();
+    return $stmt->fetch(PDO::FETCH_ASSOC);
+}
+
+function purchaseRefreshLinkedOrderCompletion($conn, $order_id, $company_id, $user_id) {
+    if (!$order_id || !purchaseOrderItemColumnExists($conn, 'item_completed')) {
+        return;
+    }
+
+    $stmt = $conn->prepare("
+        SELECT
+            COUNT(*) AS total_items,
+            COALESCE(SUM(CASE WHEN item_completed = 1 THEN 1 ELSE 0 END), 0) AS completed_items
+        FROM tblOrderItems
+        WHERE order_id = :order_id
+          AND company_id = :company_id
+    ");
+    $stmt->bindValue(':order_id', $order_id, PDO::PARAM_INT);
+    $stmt->bindValue(':company_id', $company_id, PDO::PARAM_INT);
+    $stmt->execute();
+    $summary = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    $total = isset($summary['total_items']) ? (int)$summary['total_items'] : 0;
+    $completed = isset($summary['completed_items']) ? (int)$summary['completed_items'] : 0;
+    if ($total <= 0 || $completed < $total) {
+        return;
+    }
+
+    $awaitingStatus = purchaseFindOrderStatusByNames($conn, $company_id, array(
+        'Awaiting Delivery/Collection',
+        'Awaiting Delivery',
+        'Awaiting Collection'
+    ));
+    if (!$awaitingStatus) {
+        return;
+    }
+
+    $currentStmt = $conn->prepare("
+        SELECT order_status_id
+        FROM tblOrders
+        WHERE order_id = :order_id
+          AND company_id = :company_id
+        LIMIT 1
+    ");
+    $currentStmt->bindValue(':order_id', $order_id, PDO::PARAM_INT);
+    $currentStmt->bindValue(':company_id', $company_id, PDO::PARAM_INT);
+    $currentStmt->execute();
+    $currentStatusId = (int)$currentStmt->fetchColumn();
+
+    if ($currentStatusId !== (int)$awaitingStatus['id']) {
+        $update = $conn->prepare("
+            UPDATE tblOrders
+            SET order_status_id = :order_status_id
+            WHERE order_id = :order_id
+              AND company_id = :company_id
+        ");
+        $update->bindValue(':order_status_id', (int)$awaitingStatus['id'], PDO::PARAM_INT);
+        $update->bindValue(':order_id', $order_id, PDO::PARAM_INT);
+        $update->bindValue(':company_id', $company_id, PDO::PARAM_INT);
+        $update->execute();
+        addOrderActivity($order_id, $company_id, 5, 'Order complete: moved to ' . $awaitingStatus['description'], $user_id, 0, 'order_items_completed');
+    }
+}
+
+function setOrderItemsCompletedFromPurchase($conn, $pid, $company_id, $completed, $user_id) {
+    if (!purchaseOrderItemColumnExists($conn, 'item_completed')) {
+        return array('rows' => 0, 'order_ids' => array());
+    }
+
+    $select = $conn->prepare("
+        SELECT DISTINCT order_id
+        FROM tblOrderItems
+        WHERE company_id = :company_id
+          AND purchased_item = :pid
+    ");
+    $select->bindValue(':company_id', $company_id, PDO::PARAM_INT);
+    $select->bindValue(':pid', $pid, PDO::PARAM_INT);
+    $select->execute();
+    $orderIds = array_map('intval', $select->fetchAll(PDO::FETCH_COLUMN));
+
+    $fields = "item_completed = :item_completed";
+    if (purchaseOrderItemColumnExists($conn, 'item_completed_at')) {
+        $fields .= ", item_completed_at = :item_completed_at";
+    }
+    if (purchaseOrderItemColumnExists($conn, 'item_completed_by')) {
+        $fields .= ", item_completed_by = :item_completed_by";
+    }
+
+    $update = $conn->prepare("
+        UPDATE tblOrderItems
+        SET {$fields}
+        WHERE company_id = :company_id
+          AND purchased_item = :pid
+    ");
+    $update->bindValue(':item_completed', $completed ? 1 : 0, PDO::PARAM_INT);
+    if (purchaseOrderItemColumnExists($conn, 'item_completed_at')) {
+        $update->bindValue(':item_completed_at', $completed ? time() : null, $completed ? PDO::PARAM_INT : PDO::PARAM_NULL);
+    }
+    if (purchaseOrderItemColumnExists($conn, 'item_completed_by')) {
+        $update->bindValue(':item_completed_by', $completed ? $user_id : null, $completed ? PDO::PARAM_INT : PDO::PARAM_NULL);
+    }
+    $update->bindValue(':company_id', $company_id, PDO::PARAM_INT);
+    $update->bindValue(':pid', $pid, PDO::PARAM_INT);
+    $update->execute();
+
+    foreach ($orderIds as $orderId) {
+        addOrderActivity(
+            $orderId,
+            $company_id,
+            5,
+            ($completed ? 'PO received: linked purchase items completed' : 'PO receive reversed: linked purchase items reopened') . ' #' . $pid,
+            $user_id,
+            0,
+            'order_item_completed'
+        );
+        if ($completed) {
+            purchaseRefreshLinkedOrderCompletion($conn, $orderId, $company_id, $user_id);
+        }
+    }
+
+    return array('rows' => $update->rowCount(), 'order_ids' => $orderIds);
+}
+
 function getPurchaseActivityRow($conn, $pid, $company_id) {
     $query = "SELECT * FROM tblPurchaseOrders WHERE id = :pid AND company_id = :company_id";
     $stmt = $conn->prepare($query);
@@ -1714,9 +1871,13 @@ if (isset($data_raw['action']) && $data_raw['action'] == 'insert_stock_inv') {
         }
 
         if ($rowsInserted > 0) {
+            $linkedOrders = setOrderItemsCompletedFromPurchase($conn, (int)$pid, (int)$company_id, true, (int)$_SESSION['session_user_id']);
             echo json_encode(['success' => true, 'message' => 'Updated successfully.']);
             UpdatePurStatus($pid,3);
             addPurchaseActivity($pid, $company_id, 5, 'Stock received: ' . $rowsInserted . ' inventory row(s) created', $_SESSION['session_user_id'], 0);
+            if (!empty($linkedOrders['rows'])) {
+                addPurchaseActivity($pid, $company_id, 5, 'Linked customer order item(s) completed: ' . (int)$linkedOrders['rows'], $_SESSION['session_user_id'], 0);
+            }
         } else {
             echo json_encode(['warning' => true, 'message' => 'No changes, Not Invoiced?.']);
         }
@@ -1768,9 +1929,14 @@ if (isset($data_raw['action']) && $data_raw['action'] == 'reverse_receive_items'
             ':company_id' => $company_id
         ));
 
+        $linkedOrders = setOrderItemsCompletedFromPurchase($conn, $pid, $company_id, false, (int)$_SESSION['session_user_id']);
+
         $conn->commit();
 
         addPurchaseActivity($pid, $company_id, 5, 'Receive reversed: ' . $deletedRows . ' inventory row(s) removed', $_SESSION['session_user_id'], 0);
+        if (!empty($linkedOrders['rows'])) {
+            addPurchaseActivity($pid, $company_id, 5, 'Linked customer order item(s) reopened: ' . (int)$linkedOrders['rows'], $_SESSION['session_user_id'], 0);
+        }
 
         echo json_encode(array(
             'success' => true,

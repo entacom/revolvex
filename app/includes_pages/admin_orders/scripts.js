@@ -449,17 +449,23 @@ function getOrderId() {
                 
                 
                 $("#infobar_order_id").text('ID #' + order_id + (data.site_address_full ? ' - ' + data.site_address_full : ''));
-                $("#infobar_delivery_date").text(data.delivery_date || '-');
+                $("#infobar_delivery_date")
+                    .text(data.delivery_date || '-')
+                    .toggleClass('text-danger fw-bold', !!(data.completion && data.completion.warning));
                 $("#infobar_note").text(data.deliver_note || '-');
                 $("#infobar_status").empty().append(
-                    $('<span>', { class: 'order-hero-status' })
+                    $('<span>', { class: 'order-hero-status' + ((data.completion && data.completion.warning) ? ' text-danger fw-bold border-danger' : '') })
                         .append($('<i>', { class: 'bx bx-info-circle' }))
                         .append(document.createTextNode(data.order_status || '-'))
                 );
+                if (data.completion && data.completion.total > 0) {
+                    $("#infobar_order_status").html(
+                        '<span class="badge ' + (data.completion.warning ? 'bg-danger' : 'bg-primary') + '">Items ' + data.completion.ratio + '</span>'
+                    );
+                } else {
+                    $("#infobar_order_status").html('');
+                }
                 $("#infobar_order_number").text('Order # ' + (data.order_number || '-'));
-                
-                 $('#infobar_order_status').html('');
-                
                 
                 $("#order_user_id").val(data.order_user_id);
                 populateDropdown('#order_user', data.order_user, 'get_users_company', 'id', 'fullname');
@@ -626,6 +632,28 @@ function downloadCsvForPart(part_number, customer_contact, csvOrderId) {
         error: function(xhr, status, error) {
             console.error('Error generating CSV:', error);
         }
+    });
+}
+
+function toggleOrderItemCompleted(id, checked) {
+    $.post(crud_url, {
+        action: 'toggle_order_item_completed',
+        item_id: id,
+        completed: checked ? 1 : 0
+    }, function (res) {
+        if (res && res.success) {
+            if (res.summary && res.summary.ratio) {
+                $('#order_items_completion_badge').text(res.summary.ratio + ' complete');
+            }
+            getOrderId();
+            return;
+        }
+
+        alert((res && res.message) ? res.message : 'Could not update item completion.');
+        Loadtab('order_items');
+    }, 'json').fail(function (xhr) {
+        alert("AJAX error: " + xhr.responseText);
+        Loadtab('order_items');
     });
 }
 

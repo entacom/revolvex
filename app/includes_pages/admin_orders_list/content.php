@@ -7,6 +7,49 @@ include("../../includes/common.php");
 $database = new Database();
 $conn = $database->connect();
 
+function ordersListColumnExists($conn, $columnName) {
+    static $cache = array();
+    $key = 'tblOrderItems.' . $columnName;
+    if (array_key_exists($key, $cache)) {
+        return $cache[$key];
+    }
+    $stmt = $conn->prepare("SHOW COLUMNS FROM tblOrderItems LIKE :column_name");
+    $stmt->bindValue(':column_name', $columnName);
+    $stmt->execute();
+    $cache[$key] = (bool)$stmt->fetch(PDO::FETCH_ASSOC);
+    return $cache[$key];
+}
+
+function ordersListCompletionSummary($conn, $order_id, $company_id, $delivery_date) {
+    $summary = array('completed' => 0, 'total' => 0, 'ratio' => '0/0', 'warning' => false);
+    if (!ordersListColumnExists($conn, 'item_completed')) {
+        return $summary;
+    }
+
+    $stmt = $conn->prepare("
+        SELECT
+            COUNT(*) AS total_items,
+            COALESCE(SUM(CASE WHEN item_completed = 1 THEN 1 ELSE 0 END), 0) AS completed_items
+        FROM tblOrderItems
+        WHERE company_id = :company_id
+          AND order_id = :order_id
+    ");
+    $stmt->bindValue(':company_id', $company_id, PDO::PARAM_INT);
+    $stmt->bindValue(':order_id', $order_id, PDO::PARAM_INT);
+    $stmt->execute();
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    $summary['total'] = isset($row['total_items']) ? (int)$row['total_items'] : 0;
+    $summary['completed'] = isset($row['completed_items']) ? (int)$row['completed_items'] : 0;
+    $summary['ratio'] = $summary['completed'] . '/' . $summary['total'];
+    $summary['warning'] = $summary['total'] > 0
+        && $summary['completed'] < $summary['total']
+        && (int)$delivery_date > 0
+        && (int)$delivery_date <= strtotime('tomorrow 23:59:59');
+
+    return $summary;
+}
+
 // Capture tab filter from GET param
 $t_filter = isset($_GET['t']) ? (int)$_GET['t'] : 0;
 
@@ -178,6 +221,31 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['tab_id']) && $_POST['t
                     padding: 0.28rem 0.65rem;
                     white-space: nowrap;
                 }
+                .order-status-pill.order-risk,
+                .order-date-block.order-risk {
+                    color: #dc3545 !important;
+                    font-weight: 900;
+                }
+                .order-status-pill.order-risk {
+                    background: #fde8e8;
+                    border-color: #f5b5b5;
+                }
+                .order-completion-pill {
+                    background: #f1f5f9;
+                    border: 1px solid #dbe3ef;
+                    border-radius: 999px;
+                    color: #44546a;
+                    display: inline-block;
+                    font-size: 0.72rem;
+                    font-weight: 800;
+                    margin-top: 0.35rem;
+                    padding: 0.2rem 0.5rem;
+                }
+                .order-completion-pill.order-risk {
+                    background: #fde8e8;
+                    border-color: #f5b5b5;
+                    color: #dc3545;
+                }
                 .orders-sort-button {
                     color: #546070 !important;
                     font-size: 0.74rem;
@@ -214,6 +282,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['tab_id']) && $_POST['t
                 $deliveryNote = !empty($row['delivery_note']) ? $row['delivery_note'] : '';
                 $createdDate = !empty($row['order_date']) ? date_c($row['order_date']) : '-';
                 $deliveryDate = !empty($row['delivery_date']) ? date_c($row['delivery_date']) : '-';
+                $completion = ordersListCompletionSummary($conn, (int)$row['order_id'], (int)$_SESSION['session_company_id'], (int)$row['delivery_date']);
+                $riskClass = $completion['warning'] ? ' order-risk' : '';
 
                 $output .= '<tr onclick="redirectToJob(' . (int)$row['order_id'] . ')" style="' . $statusStyle . '">';
                 $output .= '<td><span class="order-id-badge">#' . htmlspecialchars($row['order_id']) . '</span></td>';
@@ -221,8 +291,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['tab_id']) && $_POST['t
                 $output .= '<td><div class="order-main">' . htmlspecialchars($row['order_number']) . '</div><div class="order-sub">' . htmlspecialchars($row['customer_phone']) . '</div></td>';
                 $output .= '<td><div class="order-date-label">Created</div><div class="order-date-block">' . htmlspecialchars($createdDate) . '</div></td>';
                 $output .= '<td><div class="order-main">' . htmlspecialchars($site) . '</div><div class="order-sub">' . htmlspecialchars($deliveryNote) . '</div></td>';
-                $output .= '<td><div class="order-date-label">Delivery</div><div class="order-date-block">' . htmlspecialchars($deliveryDate) . '</div></td>';
-                $output .= '<td><span class="order-status-pill">' . htmlspecialchars($statusDescription) . '</span></td>';
+                $output .= '<td><div class="order-date-label">Delivery</div><div class="order-date-block' . $riskClass . '">' . htmlspecialchars($deliveryDate) . '</div></td>';
+                $output .= '<td><span class="order-status-pill' . $riskClass . '">' . htmlspecialchars($statusDescription) . '</span><div><span class="order-completion-pill' . $riskClass . '">Items ' . htmlspecialchars($completion['ratio']) . '</span></div></td>';
                 $output .= '</tr>';
             }
 

@@ -66,12 +66,13 @@
    - Admin dashboard Recent Orders now shows the last 3 orders.
    - Admin dashboard Recent Activity now shows only the latest 5 order activities.
    - Purchase activity should use `tblPurchaseActivity` and record the logged-in session user for purchase edits, receiving, invoice/bill conversion, stock receive/reversal, and accounting sends.
-   - Stock Report now shows `tblInventory.item_finished` as a Finished tick and can filter All / Finished / Not Finished.
+   - Stock Report now shows `tblInventory.item_finished` as a Finished tick, filters All / Finished / Not Finished, filters by inventory group, and filters open/closed coils from `tblInventoryItems.coil_finished`.
    - Admin Orders List has been restyled with a stronger header/filter area, row-card table treatment, status pills, and secondary order details.
    - Admin Purchasing List has been restyled to match the Orders List and now supports sortable PO number, order date, and required date columns.
    - Copy Tagged Items To PO now writes the generated purchase order id into `tblOrderItems.purchased_item`, clears the tag, shows a PO badge on the order item row, and records order/purchase activity.
    - Admin Production now excludes order sub-items whose parent `tblOrderItems.purchased_item` is set, including production CSV export and match-item selection lists.
    - Admin Production now has a per-row Purchased checkbox that sets `tblOrderItems.purchased_item = 1`, records order activity, and removes the item from the production queue.
+   - Order item completion is being tracked through `tblOrderItems.item_completed`, with manual item checkboxes, order/list completion tallies, due-date red warning styling, and linked PO receive/reverse receive updates.
    - Admin order header actions now use separate Print and Email dropdown buttons.
    - Admin order header now includes a Process Order button in the action area. The modal groups upload original, email/print order confirmation, print production cards, print labels, print delivery docket, and process-to-production actions.
    - Quote workflow now has its own Process Quote modal with payment-required/payment-received tracking, quote print/email activity, and convert-to-order handling.

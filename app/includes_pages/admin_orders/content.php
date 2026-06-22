@@ -100,8 +100,21 @@ function renderLinkedPurchaseBadge($conn, $pid, $company_id) {
 
 // Checks if the request method is POST and 'tab_id' is set
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['tab_id'])) {
-    $database = new Database();
-    $conn = $database->connect();
+$database = new Database();
+$conn = $database->connect();
+
+function orderContentColumnExists($conn, $columnName) {
+    static $cache = array();
+    $key = 'tblOrderItems.' . $columnName;
+    if (array_key_exists($key, $cache)) {
+        return $cache[$key];
+    }
+    $stmt = $conn->prepare("SHOW COLUMNS FROM tblOrderItems LIKE :column_name");
+    $stmt->bindValue(':column_name', $columnName);
+    $stmt->execute();
+    $cache[$key] = (bool)$stmt->fetch(PDO::FETCH_ASSOC);
+    return $cache[$key];
+}
     $tab_id = $_POST['tab_id'];
     if ($tab_id == 'home') {
             $data = ' <div class="row">
@@ -321,6 +334,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['tab_id'])) {
 
 
   if ($tab_id == 'order_items') {
+    $hasItemCompleted = orderContentColumnExists($conn, 'item_completed');
     $query = "SELECT * FROM tblOrderItems  WHERE company_id = :company_id AND order_id = :order_id ";
     $statement = $conn->prepare($query);
     $statement->bindValue(':company_id', $_SESSION['session_company_id'], PDO::PARAM_INT);
@@ -328,11 +342,29 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['tab_id'])) {
     $statement->execute();
     $rowCount = $statement->rowCount();
     if ($rowCount > 0) {
+        $completionSummary = '';
+        if ($hasItemCompleted) {
+            $completionStmt = $conn->prepare("
+                SELECT
+                    COUNT(*) AS total_items,
+                    COALESCE(SUM(CASE WHEN item_completed = 1 THEN 1 ELSE 0 END), 0) AS completed_items
+                FROM tblOrderItems
+                WHERE company_id = :company_id
+                  AND order_id = :order_id
+            ");
+            $completionStmt->bindValue(':company_id', $_SESSION['session_company_id'], PDO::PARAM_INT);
+            $completionStmt->bindValue(':order_id', $_POST['order_id'], PDO::PARAM_INT);
+            $completionStmt->execute();
+            $completionRow = $completionStmt->fetch(PDO::FETCH_ASSOC);
+            $completionSummary = '<span class="badge bg-primary-subtle text-primary border border-primary-subtle ms-2" id="order_items_completion_badge">'
+                . (int)$completionRow['completed_items'] . '/' . (int)$completionRow['total_items'] . ' complete</span>';
+        }
+
         $output = '  <div class="card">
                     <div class="card-body">
                        <div class="d-flex justify-content-between align-items-start mb-2">
                            <div>
-                               <h5 class="card-title">Order Items</h5>
+                               <h5 class="card-title">Order Items ' . $completionSummary . '</h5>
                            </div>
                            <div class="row align-items-center">
                                <div class="col-auto">
@@ -347,12 +379,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['tab_id'])) {
                        <div class="container-fluid px-0">
                            <div class="row fw-bold border-bottom mb-1" style="margin: 0;">
                                <div class="col-1 px-1">Item#</div>
-                               <div class="col-4 px-1">Description</div>
+                               <div class="col-3 px-1">Description</div>
                                <div class="col-1 px-1">Qty</div>
                                <div class="col-1 px-1">Price</div>
                                <div class="col-1 px-1">Unit</div>
                                <div class="col-2 px-1">Total(Ex)</div>
                                <div class="col-1 px-1">PO</div>
+                               <div class="col-1 px-1">Done</div>
                                <div class="col-1 px-1">Actions</div>
                            </div>';
 
@@ -370,14 +403,18 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['tab_id'])) {
                 if (!empty($row['purchased_item'])) {
                     $purchaseBadge = renderLinkedPurchaseBadge($conn, (int)$row['purchased_item'], (int)$_SESSION['session_company_id']);
                 }
+                $completedCheckbox = $hasItemCompleted
+                    ? '<input class="form-check-input" type="checkbox" ' . (!empty($row['item_completed']) ? 'checked' : '') . ' onchange="toggleOrderItemCompleted(' . (int)$row['id'] . ', this.checked)" title="Mark this order item completed">'
+                    : '<span class="text-muted small">-</span>';
                     $output .= '<div class="row fw-bold align-items-center border-bottom py-1 hover-row" style="margin: 0;">
                         <div class="col-1 px-1">' . htmlspecialchars($row['part_number']) . '</div>
-                        <div class="col-4 px-1">' . htmlspecialchars($row['description']) . '</div>
+                        <div class="col-3 px-1">' . htmlspecialchars($row['description']) . '</div>
                         <div class="col-1 px-1">' . $row_value . '</div>
                         <div class="col-1 px-1">$' . number_format($row['rate'], 2) . '</div>
                         <div class="col-1 px-1">' . htmlspecialchars($unit) . '</div>
                         <div class="col-2 px-1">$' . number_format($row_value_c, 2) . '</div>
                         <div class="col-1 px-1">' . $purchaseBadge . '</div>
+                        <div class="col-1 px-1 text-center">' . $completedCheckbox . '</div>
                         <div class="col-1 px-1 d-flex justify-content-between">
                             <button class="btn btn-sm btn-outline-secondary" onclick="editOrderItem(' . htmlspecialchars($row['id']) . ')">
                                 <i class="bx bx-edit"></i>
