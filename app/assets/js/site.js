@@ -91,7 +91,18 @@ document.addEventListener('click', function(event) {
     tabLink.setAttribute('aria-selected', 'true');
 });
 
-function PrintPurchaseOrder(order_id) {
+function PrintPurchaseOrder(order_id, recordActivity) {
+    if (recordActivity !== false && order_id) {
+        fetch('includes_pages/admin_purchasing/crud.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                action: 'record_purchase_process_activity',
+                pid: order_id,
+                workflow_type: 'purchase_order_printed'
+            })
+        }).catch(function() {});
+    }
     window.open('pdf/purchase_order_v1.php?pid=' + order_id, '_blank');
 }
 function PrintPurchaseDel(order_id) {

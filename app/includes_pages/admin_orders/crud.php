@@ -367,6 +367,54 @@ function getProcessOrderWorkflowActivity($conn, $order_id, $company_id) {
     return $history;
 }
 
+function getProcessOrderSummary($conn, $order_id, $company_id) {
+    $summary = array(
+        'packs' => 0,
+        'manufactured_items' => 0,
+        'total_items' => 0,
+        'weight_kg' => 0
+    );
+
+    $packStmt = $conn->prepare("SELECT COUNT(*) FROM tblOrderPacks WHERE order_id = :order_id AND company_id = :company_id");
+    $packStmt->bindValue(':order_id', $order_id, PDO::PARAM_INT);
+    $packStmt->bindValue(':company_id', $company_id, PDO::PARAM_INT);
+    $packStmt->execute();
+    $summary['packs'] = (int)$packStmt->fetchColumn();
+
+    $itemStmt = $conn->prepare("
+        SELECT
+            COUNT(*) AS total_items,
+            SUM(CASE WHEN i.group_id = 1 THEN 1 ELSE 0 END) AS manufactured_items
+        FROM tblOrderItems oi
+        LEFT JOIN tblInventory i
+          ON i.part_number = oi.part_number
+         AND i.company_id = oi.company_id
+        WHERE oi.order_id = :order_id
+          AND oi.company_id = :company_id
+    ");
+    $itemStmt->bindValue(':order_id', $order_id, PDO::PARAM_INT);
+    $itemStmt->bindValue(':company_id', $company_id, PDO::PARAM_INT);
+    $itemStmt->execute();
+    $itemRow = $itemStmt->fetch(PDO::FETCH_ASSOC);
+    if ($itemRow) {
+        $summary['total_items'] = (int)$itemRow['total_items'];
+        $summary['manufactured_items'] = (int)$itemRow['manufactured_items'];
+    }
+
+    $weightStmt = $conn->prepare("
+        SELECT COALESCE(SUM(weight), 0)
+        FROM tblOrderSubItems
+        WHERE order_id = :order_id
+          AND company_id = :company_id
+    ");
+    $weightStmt->bindValue(':order_id', $order_id, PDO::PARAM_INT);
+    $weightStmt->bindValue(':company_id', $company_id, PDO::PARAM_INT);
+    $weightStmt->execute();
+    $summary['weight_kg'] = round((float)$weightStmt->fetchColumn(), 1);
+
+    return $summary;
+}
+
 
 
 
@@ -592,7 +640,8 @@ if (isset($data_raw['action']) && $data_raw['action'] === 'record_process_order_
 
         echo json_encode([
             'success' => true,
-            'history' => getProcessOrderWorkflowActivity($conn, $order_id, $company_id)
+            'history' => getProcessOrderWorkflowActivity($conn, $order_id, $company_id),
+            'summary' => getProcessOrderSummary($conn, $order_id, $company_id)
         ]);
         exit;
     } catch (Exception $e) {

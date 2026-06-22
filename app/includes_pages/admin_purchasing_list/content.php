@@ -43,9 +43,21 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['tab_id']) && $_POST['t
         $sortDirection = ($sortOrder === 'asc') ? 'ASC' : 'DESC';
         $orderBy = $sortColumns[$sortField] . ' ' . $sortDirection . ', id DESC';
     }
+    $hideCompleteSQL = (empty($searchQuery) && empty($orderStatusId))
+        ? " AND order_status_id NOT IN (
+                SELECT id
+                FROM tblPurchaseStatus
+                WHERE company_id = :company_id
+                  AND (
+                        LOWER(description) LIKE '%invoice%'
+                     OR LOWER(description) LIKE '%bill%'
+                     OR LOWER(description) LIKE '%closed%'
+                  )
+            )"
+        : '';
 
     try {
-        $query = "SELECT * FROM tblPurchaseOrders WHERE company_id = :company_id {$searchSQL} {$statusSQL} ORDER BY {$orderBy} LIMIT :offset, :recordsPerPage";
+        $query = "SELECT * FROM tblPurchaseOrders WHERE company_id = :company_id {$searchSQL} {$statusSQL} {$hideCompleteSQL} ORDER BY {$orderBy} LIMIT :offset, :recordsPerPage";
         $statement = $conn->prepare($query);
         $statement->bindValue(':company_id', $_SESSION['session_company_id'], PDO::PARAM_INT);
 

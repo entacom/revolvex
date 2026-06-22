@@ -84,10 +84,20 @@ $pdf->SetFont('times', '', 12);
 $database = new Database();
 $conn = $database->connect();
 
-// Fetch all part numbers for the given order_id
-$query = "SELECT DISTINCT part_number FROM tblOrderItems WHERE order_id = :order_id";
+// Fetch manufactured part numbers only for the given order_id
+$query = "
+    SELECT DISTINCT oi.part_number
+    FROM tblOrderItems oi
+    INNER JOIN tblInventory i
+       ON i.part_number = oi.part_number
+      AND i.company_id = oi.company_id
+    WHERE oi.order_id = :order_id
+      AND oi.company_id = :company_id
+      AND i.group_id = 1
+";
 $stmt = $conn->prepare($query);
 $stmt->bindValue(':order_id', $_GET['order_id'], PDO::PARAM_INT);
+$stmt->bindValue(':company_id', $_SESSION['session_company_id'], PDO::PARAM_INT);
 $stmt->execute();
 
 while ($part_number = $stmt->fetchColumn()) {

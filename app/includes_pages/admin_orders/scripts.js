@@ -1443,6 +1443,23 @@ function renderProcessOrderActivity(history) {
     });
 }
 
+let processOrderCurrentSummary = {};
+
+function renderProcessOrderSummary(summary) {
+    const data = summary || {};
+    processOrderCurrentSummary = data;
+    const values = [
+        data.packs || 0,
+        data.manufactured_items || 0,
+        data.total_items || 0,
+        (data.weight_kg || 0) + 'kg'
+    ];
+
+    $('#process_order_summary .summary-value').each(function(index) {
+        $(this).text(values[index]);
+    });
+}
+
 function getProcessQuoteId() {
     return $('#process_quote_order_id').val() || order_id;
 }
@@ -1648,6 +1665,7 @@ function loadProcessOrderActivity() {
 
     if (!processOrderId) {
         renderProcessOrderActivity({});
+        renderProcessOrderSummary({});
         return;
     }
 
@@ -1663,6 +1681,7 @@ function loadProcessOrderActivity() {
         success: function(response) {
             if (response && response.success) {
                 renderProcessOrderActivity(response.history || {});
+                renderProcessOrderSummary(response.summary || {});
             }
         }
     });
@@ -1725,6 +1744,10 @@ function ProcessOrderPrintConfirmation() {
 }
 
 function ProcessOrderPrintProductionCards() {
+    if (!processOrderCurrentSummary || Number(processOrderCurrentSummary.manufactured_items || 0) <= 0) {
+        alert('No manufactured items found for this order.');
+        return;
+    }
     recordProcessOrderActivity('production_cards_printed', function() {
         loadProcessOrderActivity();
     });
@@ -1790,6 +1813,10 @@ function ProcessOrderSaveProductionCsvs() {
 
 function ProcessOrderPrintLabels(labelType) {
     var processOrderId = getProcessOrderId();
+    if (!processOrderCurrentSummary || Number(processOrderCurrentSummary.packs || 0) <= 0) {
+        alert('No packs found for this order. Create packs before printing labels.');
+        return;
+    }
     if (labelType === 'zebra') {
         recordProcessOrderActivity('labels_zebra_printed', function() {
             loadProcessOrderActivity();

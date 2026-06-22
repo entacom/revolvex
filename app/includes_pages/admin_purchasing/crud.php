@@ -92,6 +92,52 @@ function findPurchaseStatusIdByNames($conn, $company_id, $statusNames) {
     return $stmt->fetch(PDO::FETCH_ASSOC);
 }
 
+function markPurchaseOrderSent($conn, $pid, $company_id) {
+    $sentStatus = findPurchaseStatusIdByNames($conn, $company_id, array('Ordered', 'Order'));
+    if (!$sentStatus) {
+        return;
+    }
+
+    $stmt = $conn->prepare("
+        SELECT po.order_status_id, ps.description AS status_description
+        FROM tblPurchaseOrders po
+        LEFT JOIN tblPurchaseStatus ps
+          ON ps.id = po.order_status_id
+         AND ps.company_id = po.company_id
+        WHERE po.id = :pid
+          AND po.company_id = :company_id
+        LIMIT 1
+    ");
+    $stmt->bindValue(':pid', $pid, PDO::PARAM_INT);
+    $stmt->bindValue(':company_id', $company_id, PDO::PARAM_INT);
+    $stmt->execute();
+    $purchase = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$purchase || (int)$purchase['order_status_id'] === (int)$sentStatus['id']) {
+        return;
+    }
+
+    $currentStatus = strtolower((string)$purchase['status_description']);
+    foreach (array('confirm', 'receive', 'invoice', 'bill', 'closed') as $finalState) {
+        if (strpos($currentStatus, $finalState) !== false) {
+            return;
+        }
+    }
+
+    $update = $conn->prepare("
+        UPDATE tblPurchaseOrders
+        SET order_status_id = :order_status_id
+        WHERE id = :pid
+          AND company_id = :company_id
+    ");
+    $update->bindValue(':order_status_id', (int)$sentStatus['id'], PDO::PARAM_INT);
+    $update->bindValue(':pid', $pid, PDO::PARAM_INT);
+    $update->bindValue(':company_id', $company_id, PDO::PARAM_INT);
+    $update->execute();
+
+    addPurchaseActivity($pid, $company_id, 5, 'Status changed to ' . $sentStatus['description'] . ' after purchase order sent', $_SESSION['session_user_id'], 0);
+}
+
 function getPurchaseActivityRow($conn, $pid, $company_id) {
     $query = "SELECT * FROM tblPurchaseOrders WHERE id = :pid AND company_id = :company_id";
     $stmt = $conn->prepare($query);
@@ -539,6 +585,10 @@ if (isset($data_raw['action']) && $data_raw['action'] == 'record_purchase_proces
     }
 
     addPurchaseActivity($pid, $company_id, 5, $actions[$workflow_type], $_SESSION['session_user_id'], 0);
+
+    if (in_array($workflow_type, array('purchase_order_printed', 'purchase_order_emailed'), true)) {
+        markPurchaseOrderSent($conn, $pid, $company_id);
+    }
 
     if (purchaseConfirmationColumnsExist($conn) && in_array($workflow_type, array('purchase_confirmation_requested', 'purchase_confirmation_requested_cleared'), true)) {
         $required = $workflow_type === 'purchase_confirmation_requested' ? 1 : 0;

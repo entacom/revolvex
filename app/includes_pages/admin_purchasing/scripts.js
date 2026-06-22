@@ -608,7 +608,16 @@ function recordProcessPurchaseActivity(workflowType, callback) {
 function updatePurchaseAttachmentSummary() {
     const input = document.getElementById('purchase_email_attachments');
     const count = input && input.files ? input.files.length : 0;
-    $('#purchase_process_attachment_summary').text(count ? count + ' file(s) selected for the PO email.' : 'No files selected.');
+    if (!count) {
+        $('#purchase_process_attachment_summary').text('No files selected.');
+        return;
+    }
+
+    const names = Array.from(input.files).map(function(file) {
+        return file.name;
+    }).slice(0, 3);
+    const extra = count > 3 ? ' +' + (count - 3) + ' more' : '';
+    $('#purchase_process_attachment_summary').text(count + ' file(s): ' + names.join(', ') + extra);
 }
 
 function ProcessPurchaseChooseAttachments() {
@@ -616,6 +625,30 @@ function ProcessPurchaseChooseAttachments() {
 }
 
 $(document).on('change', '#purchase_email_attachments', updatePurchaseAttachmentSummary);
+$(document).on('click', '#purchase_attachment_dropzone', ProcessPurchaseChooseAttachments);
+$(document).on('dragover dragenter', '#purchase_attachment_dropzone', function(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    $(this).addClass('is-dragover');
+});
+$(document).on('dragleave dragend drop', '#purchase_attachment_dropzone', function(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    $(this).removeClass('is-dragover');
+});
+$(document).on('drop', '#purchase_attachment_dropzone', function(event) {
+    const droppedFiles = event.originalEvent && event.originalEvent.dataTransfer
+        ? event.originalEvent.dataTransfer.files
+        : null;
+    const input = document.getElementById('purchase_email_attachments');
+
+    if (!droppedFiles || !droppedFiles.length || !input) {
+        return;
+    }
+
+    input.files = droppedFiles;
+    updatePurchaseAttachmentSummary();
+});
 
 function ProcessPurchaseConfirmationChanged() {
     const workflowType = $('#purchase_confirmation_requested_checkbox').is(':checked')
@@ -693,7 +726,7 @@ function ProcessPurchasePrintOrder() {
             loadProcessPurchaseActivity();
         });
     });
-    PrintPurchaseOrder(getProcessPurchaseId());
+    PrintPurchaseOrder(getProcessPurchaseId(), false);
 }
 
 function ProcessPurchaseEmailOrder() {

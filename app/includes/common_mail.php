@@ -348,6 +348,81 @@ function savePurchaseEmailAttachment(PDO $conn, $pid, $company_id, $user_id, $tm
     return true;
 }
 
+function findPurchaseEmailStatus(PDO $conn, $company_id, $statusNames) {
+    if (empty($statusNames)) {
+        return null;
+    }
+
+    $placeholders = array();
+    $params = array(':company_id' => $company_id);
+    foreach ($statusNames as $index => $statusName) {
+        $key = ':status_' . $index;
+        $placeholders[] = $key;
+        $params[$key] = strtolower($statusName);
+    }
+
+    $stmt = $conn->prepare("
+        SELECT id, description
+        FROM tblPurchaseStatus
+        WHERE company_id = :company_id
+          AND LOWER(TRIM(description)) IN (" . implode(',', $placeholders) . ")
+        ORDER BY id ASC
+        LIMIT 1
+    ");
+    foreach ($params as $key => $value) {
+        $stmt->bindValue($key, $value);
+    }
+    $stmt->execute();
+
+    return $stmt->fetch(PDO::FETCH_ASSOC);
+}
+
+function markPurchaseOrderSentFromEmail(PDO $conn, $pid, $company_id, $user_id) {
+    $sentStatus = findPurchaseEmailStatus($conn, $company_id, array('Ordered', 'Order'));
+    if (!$sentStatus) {
+        return;
+    }
+
+    $stmt = $conn->prepare("
+        SELECT po.order_status_id, ps.description AS status_description
+        FROM tblPurchaseOrders po
+        LEFT JOIN tblPurchaseStatus ps
+          ON ps.id = po.order_status_id
+         AND ps.company_id = po.company_id
+        WHERE po.id = :pid
+          AND po.company_id = :company_id
+        LIMIT 1
+    ");
+    $stmt->bindValue(':pid', $pid, PDO::PARAM_INT);
+    $stmt->bindValue(':company_id', $company_id, PDO::PARAM_INT);
+    $stmt->execute();
+    $purchase = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$purchase || (int)$purchase['order_status_id'] === (int)$sentStatus['id']) {
+        return;
+    }
+
+    $currentStatus = strtolower((string)$purchase['status_description']);
+    foreach (array('confirm', 'receive', 'invoice', 'bill', 'closed') as $finalState) {
+        if (strpos($currentStatus, $finalState) !== false) {
+            return;
+        }
+    }
+
+    $update = $conn->prepare("
+        UPDATE tblPurchaseOrders
+        SET order_status_id = :order_status_id
+        WHERE id = :pid
+          AND company_id = :company_id
+    ");
+    $update->bindValue(':order_status_id', (int)$sentStatus['id'], PDO::PARAM_INT);
+    $update->bindValue(':pid', $pid, PDO::PARAM_INT);
+    $update->bindValue(':company_id', $company_id, PDO::PARAM_INT);
+    $update->execute();
+
+    addPurchaseActivity($pid, $company_id, 5, 'Status changed to ' . $sentStatus['description'] . ' after purchase order sent', $user_id, 0);
+}
+
 function sendPurchaseOrderEmail($order_id, $pdfPath, $email_to1, $email_to2 = null) {
     $company_id   = $_SESSION['session_company_id'];
     $companyName  = getTableField('company_name', 'tblCompany', $company_id);
@@ -433,6 +508,8 @@ function sendPurchaseOrderEmail($order_id, $pdfPath, $email_to1, $email_to2 = nu
             $_SESSION['session_user_id'],
             0
         );
+
+        markPurchaseOrderSentFromEmail($conn, (int)$order_id, (int)$company_id, (int)$_SESSION['session_user_id']);
 
         if (!empty($savedAttachmentNames)) {
             addPurchaseActivity(

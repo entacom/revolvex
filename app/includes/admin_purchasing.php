@@ -67,6 +67,10 @@
                         <div class="flex-grow-1">
                             <div class="fw-bold">Attach Files</div>
                             <div class="small text-muted">Attach supplier files such as punching detail or order forms to the PO email.</div>
+                            <div class="purchase-attachment-dropzone mt-2" id="purchase_attachment_dropzone">
+                                <i class="bi bi-cloud-arrow-up"></i>
+                                <span>Drop files here or click Choose</span>
+                            </div>
                             <div class="small text-muted" id="purchase_process_attachment_summary">No files selected.</div>
                         </div>
                         <button type="button" class="btn btn-sm btn-outline-secondary" onclick="ProcessPurchaseChooseAttachments()">Choose</button>

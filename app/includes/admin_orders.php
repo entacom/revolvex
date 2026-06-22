@@ -465,6 +465,24 @@
             </div>
             <input type="hidden" id="process_workflow_order_id">
             <div class="modal-body">
+                <div id="process_order_summary" class="process-order-summary mb-3">
+                    <div class="process-order-summary-item">
+                        <span class="summary-value">-</span>
+                        <span class="summary-label">Packs</span>
+                    </div>
+                    <div class="process-order-summary-item">
+                        <span class="summary-value">-</span>
+                        <span class="summary-label">Manufactured Items</span>
+                    </div>
+                    <div class="process-order-summary-item">
+                        <span class="summary-value">-</span>
+                        <span class="summary-label">Total Items</span>
+                    </div>
+                    <div class="process-order-summary-item">
+                        <span class="summary-value">-</span>
+                        <span class="summary-label">Weight</span>
+                    </div>
+                </div>
                 <div class="list-group process-order-list">
                     <div class="list-group-item d-flex justify-content-between align-items-center gap-3">
                         <div>
@@ -480,11 +498,15 @@
                     </div>
                     <div class="list-group-item d-flex justify-content-between align-items-center gap-3">
                         <div>
-                            <div class="fw-bold">Production Cards</div>
-                            <div class="small text-muted">Print all production cards for this order.</div>
-                            <div class="small text-success process-activity-summary" data-workflow-summary="production_cards_printed"></div>
+                            <div class="fw-bold">Labels</div>
+                            <div class="small text-muted">Print order labels for packed items.</div>
+                            <div class="small text-success process-activity-summary" data-workflow-summary="labels_dymo_printed"></div>
+                            <div class="small text-success process-activity-summary" data-workflow-summary="labels_zebra_printed"></div>
                         </div>
-                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="ProcessOrderPrintProductionCards()">Print</button>
+                        <div class="btn-group">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="ProcessOrderPrintLabels('dymo')">Dymo</button>
+                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="ProcessOrderPrintLabels('zebra')">Zebra</button>
+                        </div>
                     </div>
                     <div class="list-group-item d-flex justify-content-between align-items-center gap-3">
                         <div>
@@ -496,15 +518,11 @@
                     </div>
                     <div class="list-group-item d-flex justify-content-between align-items-center gap-3">
                         <div>
-                            <div class="fw-bold">Labels</div>
-                            <div class="small text-muted">Print order labels for packed items.</div>
-                            <div class="small text-success process-activity-summary" data-workflow-summary="labels_dymo_printed"></div>
-                            <div class="small text-success process-activity-summary" data-workflow-summary="labels_zebra_printed"></div>
+                            <div class="fw-bold">Production Cards</div>
+                            <div class="small text-muted">Print production cards for manufactured items only.</div>
+                            <div class="small text-success process-activity-summary" data-workflow-summary="production_cards_printed"></div>
                         </div>
-                        <div class="btn-group">
-                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="ProcessOrderPrintLabels('dymo')">Dymo</button>
-                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="ProcessOrderPrintLabels('zebra')">Zebra</button>
-                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="ProcessOrderPrintProductionCards()">Print</button>
                     </div>
                     <div class="list-group-item d-flex justify-content-between align-items-center gap-3">
                         <div>
