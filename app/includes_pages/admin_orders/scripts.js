@@ -3,7 +3,18 @@ var crud_url = 'includes_pages/admin_orders/crud.php';
 var content_url = 'includes_pages/admin_orders/content.php';
 const urlParams = new URLSearchParams(window.location.search);
 const tParam = urlParams.get('t'); // "1" or "2"
+
+function currentOrderId() {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('order_id')
+        || $('#this_order_id_pid').val()
+        || $('#process_workflow_order_id').val()
+        || order_id
+        || null;
+}
+
 function Loadtab(tab_id) {
+    order_id = currentOrderId();
     $.ajax({
         type: "POST",
         url: content_url,
@@ -408,6 +419,7 @@ $(document).off('click', '.delete-file').on('click', '.delete-file', function ()
 
 
 function getOrderId() {
+    order_id = currentOrderId();
     var formData = {
         action: 'read_order',
         order_id: order_id,
@@ -1391,11 +1403,13 @@ function delPack(pack_id,pack_number) {
 }
 
 function getProcessOrderId() {
-    return $('#process_workflow_order_id').val() || order_id;
+    return currentOrderId();
 }
 
 function OpenProcessOrderModal(processOrderId) {
-    $('#process_workflow_order_id').val(processOrderId || order_id);
+    const resolvedOrderId = processOrderId || currentOrderId();
+    order_id = resolvedOrderId;
+    $('#process_workflow_order_id').val(resolvedOrderId);
     $('#process_order_button').prop('disabled', false).html('<i class="bx bxs-factory"></i> Process');
     renderProcessOrderSummary({});
     loadProcessOrderSummary();
