@@ -375,7 +375,13 @@ function getProcessOrderSummary($conn, $order_id, $company_id) {
         'weight_kg' => 0
     );
 
-    $packStmt = $conn->prepare("SELECT COUNT(*) FROM tblOrderPacks WHERE order_id = :order_id AND company_id = :company_id");
+    $packStmt = $conn->prepare("
+        SELECT COUNT(DISTINCT pack_id)
+        FROM tblOrderSubItems
+        WHERE order_id = :order_id
+          AND company_id = :company_id
+          AND pack_id > 0
+    ");
     $packStmt->bindValue(':order_id', $order_id, PDO::PARAM_INT);
     $packStmt->bindValue(':company_id', $company_id, PDO::PARAM_INT);
     $packStmt->execute();
@@ -673,6 +679,32 @@ if (isset($data_raw['action']) && $data_raw['action'] === 'get_process_order_act
     } catch (Exception $e) {
         error_log('get_process_order_activity error: ' . $e->getMessage());
         echo json_encode(['success' => false, 'message' => 'Server error while loading process activity.']);
+        exit;
+    }
+}
+
+if (isset($data_raw['action']) && $data_raw['action'] === 'get_process_order_summary') {
+    header('Content-Type: application/json');
+
+    try {
+        $database = new Database();
+        $conn = $database->connect();
+        $company_id = (int)$_SESSION['session_company_id'];
+        $order_id = isset($data_raw['order_id']) ? (int)$data_raw['order_id'] : 0;
+
+        if ($order_id <= 0) {
+            echo json_encode(['success' => false, 'message' => 'Invalid order id.']);
+            exit;
+        }
+
+        echo json_encode([
+            'success' => true,
+            'summary' => getProcessOrderSummary($conn, $order_id, $company_id)
+        ]);
+        exit;
+    } catch (Exception $e) {
+        error_log('get_process_order_summary error: ' . $e->getMessage());
+        echo json_encode(['success' => false, 'message' => 'Server error while loading process summary.']);
         exit;
     }
 }

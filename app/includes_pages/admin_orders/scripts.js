@@ -1397,6 +1397,8 @@ function getProcessOrderId() {
 function OpenProcessOrderModal(processOrderId) {
     $('#process_workflow_order_id').val(processOrderId || order_id);
     $('#process_order_button').prop('disabled', false).html('<i class="bx bxs-factory"></i> Process');
+    renderProcessOrderSummary({});
+    loadProcessOrderSummary();
     loadProcessOrderActivity();
     $('#ProcessOrderModal').modal('show');
 }
@@ -1807,6 +1809,31 @@ function ProcessOrderSaveProductionCsvs() {
         error: function(xhr) {
             $('#process_csv_button').prop('disabled', false).text('Save');
             alert(xhr.responseText || 'Could not load production CSV items.');
+        }
+    });
+}
+
+function loadProcessOrderSummary() {
+    const processOrderId = getProcessOrderId();
+
+    if (!processOrderId) {
+        renderProcessOrderSummary({});
+        return;
+    }
+
+    $.ajax({
+        url: crud_url,
+        type: 'POST',
+        data: JSON.stringify({
+            action: 'get_process_order_summary',
+            order_id: processOrderId
+        }),
+        contentType: 'application/json',
+        dataType: 'json',
+        success: function(response) {
+            if (response && response.success) {
+                renderProcessOrderSummary(response.summary || {});
+            }
         }
     });
 }
