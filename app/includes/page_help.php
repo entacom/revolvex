@@ -13,189 +13,286 @@ function pageHelpData($pageKey) {
     $help = array(
         'admin_dashboard' => array(
             'title' => 'Dashboard Help',
-            'subtitle' => 'Use this page as the daily snapshot for orders, purchases, invoices, and recent activity.',
+            'subtitle' => 'The dashboard is the first-stop overview for daily work. Use it to see what needs attention before drilling into orders, purchases, reports, or activity.',
             'sections' => array(
-                'Main Flow' => array(
-                    'Check the order and quote cards first to see current workload.',
-                    'Use recent orders to jump back into the newest active jobs.',
-                    'Use recent activity to see who changed status, delivery dates, notes, emails, or process actions.',
-                    'Invoice performance is cached for previous months and calculated live for the current month.'
+                'What This Page Is For' => array(
+                    'Use the dashboard at the start of the day to understand how many quotes, orders, quoted jobs, and purchase orders are currently active.',
+                    'The cards at the top are shortcuts. Clicking a card should take you to the matching filtered list, such as current Orders or current Quotes.',
+                    'Recent Orders shows the newest customer jobs so you can jump back into work without searching.',
+                    'Recent Activity shows the latest recorded changes across orders, including who performed the action and what changed.'
                 ),
-                'What To Watch' => array(
-                    'Orders or purchases with warning colours need attention before delivery or supplier deadlines.',
-                    'Recent activity should show the logged-in user who performed the action.',
-                    'Dashboard numbers are summaries; click into Orders, Purchases, or Reports to investigate detail.'
+                'How To Read It' => array(
+                    'Order and quote cards show count-based workload. Use them to spot whether sales/admin work is building up.',
+                    'Purchase order cards show supplier-side workload. Use this to check if bought-in items may hold up customer jobs.',
+                    'Invoice Performance is a management view. Previous months are cached because they are history, while the current month is calculated live.',
+                    'If recent activity looks wrong, open the related order and check its Activity tab for the full timeline.'
+                ),
+                'Common Next Steps' => array(
+                    'If a job needs action, open it from Recent Orders or the Orders list.',
+                    'If supplier items are overdue or unconfirmed, open Purchases and check the Process Purchase modal.',
+                    'If stock or coil value looks wrong, go to Reports or Inventory and filter the stock data.',
+                    'If the dashboard numbers look stale after a deploy, refresh the browser once and re-open the page.'
                 )
             )
         ),
         'admin_quotes_list' => array(
             'title' => 'Quotes Help',
-            'subtitle' => 'Quotes are the start of the customer workflow before an order is approved.',
+            'subtitle' => 'Quotes are customer jobs that have not yet become active orders. This page is used to find, open, and progress quote records.',
             'sections' => array(
-                'Quote Flow' => array(
-                    'Create or open a quote, confirm customer and delivery details, then add items.',
-                    'Use Process Quote to print/email the quote and record payment-required or payment-received steps.',
-                    'Convert the quote to an order once the customer approves and any required payment is received.'
+                'Basic Quote Flow' => array(
+                    'Start by creating or opening a quote from this list.',
+                    'On the quote page, fill in customer details, site/delivery details, order number or customer reference, sales user, and notes.',
+                    'Add quoted items in the Items tab. These are the products or materials the customer is being quoted for.',
+                    'Use the Print or Email controls to send the quote document to the customer.',
+                    'Use Process Quote when you need to record quote workflow steps such as quote printed, quote emailed, payment required, or payment received.',
+                    'When the customer approves the quote, convert it to an order. From that point, continue the work through the normal Order workflow.'
                 ),
-                'Tips' => array(
-                    'Search by customer, address, order number, or notes.',
-                    'Use the status filter if you need only Quote or Quoted records.',
-                    'After conversion, continue from the order page and use Process Order.'
+                'Searching And Filtering' => array(
+                    'Use the search box to find a quote by customer name, delivery address, order number/reference, phone, email, or notes.',
+                    'Use the filter dropdown when you only want a specific status, such as Quote or Quoted.',
+                    'If you cannot find a quote, clear the search/filter first, then try a shorter search term.'
+                ),
+                'Things To Watch' => array(
+                    'Do not convert a quote to an order until the customer has approved it.',
+                    'If payment is required, use Process Quote to tick Payment Required and only convert once Payment Received is recorded.',
+                    'Keep notes clear because they become part of the job history and help the next person understand what happened.'
                 )
             )
         ),
         'admin_orders_list' => array(
             'title' => 'Orders List Help',
-            'subtitle' => 'This is the main dispatch view for active customer orders.',
+            'subtitle' => 'The Orders list is the main work queue for active customer jobs. Use it to find orders, check delivery pressure, and open jobs that need action.',
             'sections' => array(
-                'Order Flow' => array(
-                    'Open an order to review customer, delivery, items, packs, activity, attachments, production cards, and invoice.',
-                    'The item completion tally shows completed lines against total order lines.',
-                    'If an order is not fully completed close to the delivery date, the status and date show red/bold.',
-                    'Sort by created or delivery date to plan workload.'
+                'What You See In The List' => array(
+                    'Each row is a customer order. The row shows the order ID, customer, customer reference/order number, created date, delivery location, delivery date, status, and item completion tally.',
+                    'The item completion tally, for example 3/6, means 3 order lines are complete out of 6 total order lines.',
+                    'The coloured status pill shows the order stage, such as Order, In Production, Awaiting Delivery/Collection, or Invoiced.',
+                    'If the delivery date is close and not all items are complete, the status/date area turns red and bold so it stands out.'
                 ),
-                'Status Meaning' => array(
-                    'Order means the job is active and not yet fully processed.',
-                    'In Production means the order has been sent into the production workflow.',
-                    'Awaiting Delivery/Collection means all order lines are complete and the order is ready for the next delivery step.'
+                'How To Use This Page' => array(
+                    'Use search when you know part of the customer name, address, phone, email, order number, or notes.',
+                    'Use Reset to clear search and filters and return to the normal list.',
+                    'Use the filter dropdown to focus on a specific status.',
+                    'Click Created or Date headers to sort ascending/descending.',
+                    'Click a row to open the full order page.'
+                ),
+                'Recommended Daily Flow' => array(
+                    'Sort by delivery date to see the most urgent work first.',
+                    'Open red or bold rows first because they are close to delivery and not complete.',
+                    'Check the completion tally before opening a job. A low tally means production, packing, purchasing, or receiving may still need work.',
+                    'If a row appears complete but still has the wrong status, open the order and check the Items tab and Activity tab.'
                 )
             )
         ),
         'admin_orders' => array(
             'title' => 'Order Page Help',
-            'subtitle' => 'This page controls the full customer order workflow from details through production and delivery.',
+            'subtitle' => 'The Order page is the main control centre for one customer job. It covers customer details, items, purchasing, packing, production, documents, activity, delivery, and invoice flow.',
             'sections' => array(
-                'Home Tab' => array(
-                    'Check customer details, sales user, order number, status, delivery date, address, and notes.',
-                    'Save customer/details changes to record activity such as status, delivery, or note updates.',
-                    'Use Print and Email dropdowns for customer documents.'
+                'Start On The Home Tab' => array(
+                    'Check the customer name/contact, delivery address, suburb, delivery date, delivery note, sales user, order number/reference, and order status.',
+                    'If the customer is a cash sale, use the Cash Sale toggle so the page treats the order correctly.',
+                    'Use Save after changing customer, delivery, status, notes, or date details. Important changes are written to the Activity tab.',
+                    'The top header shows the customer/job, delivery date, note, status, and item completion tally.'
                 ),
-                'Items And Purchasing' => array(
-                    'Add manufactured and purchased items in the Items tab.',
-                    'Tag purchased items, then Copy Tagged Items To PO to create a supplier purchase order.',
-                    'Linked purchased items are excluded from production and can complete automatically when the PO is received.',
-                    'Use the Done checkbox to manually mark an order line complete when production or purchasing is confirmed.'
+                'Items Tab' => array(
+                    'Add each product or material line to the order from the Items tab.',
+                    'Manufactured items are used for production cards, labels, packs, production CSV files, and production workflow.',
+                    'Bought-in/purchased items can be tagged with the green tag button and copied to a supplier PO using Copy Tagged Items To PO.',
+                    'When tagged items are copied to a PO, the order item gets linked to that purchase order and is removed from production lists.',
+                    'Use the Done checkbox when a line is complete. Manufactured lines can be ticked when production has been matched/finished. Purchased lines can be completed automatically when the linked PO is received.'
                 ),
-                'Process Order' => array(
-                    'Use Process Order as the checklist once the order is ready.',
-                    'Email or print order confirmation, print labels, save production CSV files, print production cards, and print delivery docket.',
-                    'Labels need packs first. Production cards print manufactured items only.',
-                    'Process moves the order to In Production and records the action.'
+                'Pack Tab' => array(
+                    'Use packs when the order needs labels or packing groups.',
+                    'Create packs, then drag order sub-items into the correct pack.',
+                    'The pack list shows pack number and calculated weight.',
+                    'All Dymo and All Zebra print labels for all packs. Individual buttons print/download labels for a single pack.',
+                    'If labels will not print from Process Order, check that at least one pack exists and has items assigned.'
                 ),
-                'Completion' => array(
-                    'The order tally shows completed items against total items.',
-                    'When all items are complete the order can move to Awaiting Delivery/Collection.',
-                    'Orders due soon but not complete are highlighted red in the order header and order list.'
+                'Process Order Button' => array(
+                    'Process Order is a checklist for the steps normally done once the order is ready to move forward.',
+                    'Order Confirmation lets you email or print the customer order confirmation.',
+                    'Labels prints Dymo or Zebra labels for packed items. Labels require packs first.',
+                    'Production CSV Files saves machine CSV files for manufactured items.',
+                    'Production Cards prints cards for manufactured items only, not purchased items.',
+                    'Delivery Docket prints the delivery docket.',
+                    'Process moves the order to In Production and records that action.'
+                ),
+                'Activity Tab' => array(
+                    'Activity is the job history. It records manual notes and system actions such as status changes, delivery changes, emails, prints, process actions, and item completion.',
+                    'The user shown should be the logged-in user who performed the action.',
+                    'Use Add Activity for manual notes that other staff need to see.',
+                    'Only users with the delete permission should be able to delete activity records.'
+                ),
+                'Completion And Delivery Warning' => array(
+                    'The order completion tally is based on completed order item lines.',
+                    'When all lines are complete, the order can move to Awaiting Delivery/Collection if that status exists.',
+                    'If the delivery date is today/tomorrow and the job is not 100% complete, the status and delivery date are highlighted red/bold.',
+                    'If the tally looks wrong, open Items and check which lines are unticked or linked to an unreceived purchase order.'
                 )
             )
         ),
         'admin_purchasing_list' => array(
             'title' => 'Purchases List Help',
-            'subtitle' => 'Use this page to track supplier purchase orders and supplier confirmations.',
+            'subtitle' => 'Purchases is the supplier-side work queue. Use it to track purchase orders, confirmations, received stock, ETA, and invoicing.',
             'sections' => array(
-                'Purchase Flow' => array(
-                    'Open a purchase order to review vendor details, required date, ETA, internal notes, receive items, invoice, and activity.',
-                    'Default list filtering hides invoiced/closed items until you search.',
-                    'Use status colours to spot Draft, Ordered, Confirmed, Overdue, Received, and Invoiced POs.'
+                'What You See In The List' => array(
+                    'Each row is a supplier purchase order.',
+                    'The row shows supplier/vendor details, purchase order date, required date, ETA/not confirmed information, internal notes/detail, and status.',
+                    'Normal list view hides invoiced or closed purchase orders until you search, so active supplier work stays visible.',
+                    'Status colours help identify the PO stage: Draft has no colour, Ordered is yellow, Confirmed is orange, Overdue is red, Received is green, and Invoiced is blue.'
+                ),
+                'How To Use This Page' => array(
+                    'Search by vendor, PO number, delivery/reference, notes, or related text.',
+                    'Use date/status sorting to focus on urgent supplier work.',
+                    'Open a PO to review supplier details, upload confirmations, receive items, attach files, or invoice the purchase.',
+                    'If a PO is overdue or not confirmed, open it and check Process Purchase.'
                 ),
                 'Confirmation Tracking' => array(
-                    'Confirmation Required means the supplier must send confirmation.',
-                    'If confirmation is not received within 48 hours, the PO is flagged.',
-                    'Upload confirmation files and ETA in the Process Purchase modal.'
+                    'Confirmation Required means the supplier should send a confirmation back.',
+                    'If confirmation has not been received within 48 hours of request, the PO is flagged.',
+                    'When confirmation arrives, upload it in Process Purchase and enter the estimated arrival date.',
+                    'Uploaded confirmation files are saved against the PO and are visible/downloadable from the Activity/Documents area.'
                 )
             )
         ),
         'admin_purchasing' => array(
             'title' => 'Purchase Order Help',
-            'subtitle' => 'This page manages supplier purchase orders, confirmations, receiving, and invoice conversion.',
+            'subtitle' => 'This page manages one supplier purchase order, including supplier details, purchase items, confirmations, receiving, invoice conversion, and activity.',
             'sections' => array(
-                'Process Purchase' => array(
-                    'Print delivery docket, attach supplier files, request confirmation, upload received confirmation, and print/email the PO.',
-                    'Email can include selected extra documents.',
-                    'Uploaded confirmation documents are saved against the PO and shown in Activity documents.'
+                'Home Tab' => array(
+                    'Check vendor name, address, email, purchase order date, required date, estimated arrival, freight, vendor invoice number, delivery details, and internal notes.',
+                    'Use internal notes for staff-only information. These are not intended as customer-facing notes.',
+                    'Save changes to record status/date/detail updates into purchase activity.'
                 ),
-                'Receiving' => array(
-                    'Use Receive Items when supplier stock arrives.',
-                    'Receiving creates inventory rows and marks linked customer order lines complete.',
-                    'Reverse Receive removes those inventory rows and reopens linked customer order lines.'
+                'Process Purchase Button' => array(
+                    'Print Delivery Docket prints supplier delivery paperwork.',
+                    'Attach Files lets you add supplier files such as punching detail, order forms, or extra documents for the PO email.',
+                    'Order Confirmation Required marks that the supplier must send confirmation.',
+                    'Confirmation Received lets you upload the supplier confirmation file and enter estimated arrival date.',
+                    'Purchase Order Print/Email sends or prints the purchase order. Email can include selected attachments.'
                 ),
-                'Invoice Flow' => array(
-                    'Convert the purchase order to bill/invoice once supplier paperwork is ready.',
-                    'Purchasing activity records who changed status, dates, confirmations, receives, and invoice steps.'
+                'Receive Items' => array(
+                    'Use Receive Items when supplier goods arrive.',
+                    'Receiving creates stock/inventory rows based on the purchase items.',
+                    'If the PO was created from a customer order, receiving the PO marks the linked customer order lines complete.',
+                    'Reverse Receive removes the created stock rows and reopens linked customer order lines.'
+                ),
+                'Invoice And Activity' => array(
+                    'Use Invoice/Bill actions after supplier paperwork is ready.',
+                    'Purchase Activity records confirmation, receiving, invoice conversion, status changes, and file uploads.',
+                    'Saved PO files are shown in the Activity/Documents area so staff can download them later.'
                 )
             )
         ),
         'admin_production' => array(
             'title' => 'Production Help',
-            'subtitle' => 'Production shows manufactured order items that still need production work.',
+            'subtitle' => 'Production shows manufactured order work that still needs to be made or matched. Bought-in/purchased items should not appear here.',
             'sections' => array(
-                'Production Flow' => array(
-                    'Only manufactured items appear here; purchased items are filtered out.',
-                    'Match production against stock/coils and update quantities as items are produced.',
-                    'Use the Purchased checkbox only when an item should be removed from production and handled through purchasing.'
+                'What Appears Here' => array(
+                    'Only manufactured order sub-items should appear in the production queue.',
+                    'Items linked to a purchase order through purchased_item are filtered out because they are supplier work, not production work.',
+                    'The queue is driven by order items, order sub-items, inventory group settings, and order status.'
                 ),
-                'Outputs' => array(
-                    'Production cards and CSV files are generated from the order page process modal.',
-                    'Pack/label work happens from the order Pack tab and Process Order modal.'
+                'How To Work Through Production' => array(
+                    'Review the item, order, customer, quantity, and any pack/mark information.',
+                    'Match production against available stock/coils where the workflow allows it.',
+                    'Use production quantity updates carefully because they affect what is left to produce.',
+                    'If a line should actually be bought in, use the Purchased checkbox to remove it from production and record activity.'
+                ),
+                'Documents' => array(
+                    'Production cards are normally printed from the Order page Process Order modal.',
+                    'Production CSV files are also saved from the Process Order modal.',
+                    'Labels are based on packs from the order Pack tab, not directly from this page.'
                 )
             )
         ),
         'admin_inventory' => array(
             'title' => 'Inventory Help',
-            'subtitle' => 'Inventory stores parts, raw material, coils, hardware, finished flags, stock rows, and pricing fields.',
+            'subtitle' => 'Inventory controls the master list of parts, groups, units, pricing, raw materials, stock rows, and coil/finished settings used by orders, purchases, production, and reports.',
             'sections' => array(
-                'Inventory Flow' => array(
-                    'Use groups to classify items such as Coil, Hardware, manufactured product, or other stock classes.',
-                    'Use Finished to identify completed/finished stock items.',
-                    'Open an item to edit part details, pricing, units, raw material, sub-items, and stock rows.'
+                'Inventory Master Items' => array(
+                    'Each inventory item has a part number, description, group, unit, pricing/rate fields, raw material setting, and production-related fields.',
+                    'The inventory group is important. It tells the system whether an item behaves like coil, hardware, manufactured product, or another stock class.',
+                    'The Finished flag identifies completed/finished stock categories for reporting.',
+                    'Use Add Inventory Item to create new master items. Use Edit to update existing items.'
                 ),
-                'Stock And Production' => array(
-                    'Production and reports depend on inventory group, unit, metre unit, weight unit, and raw material settings.',
-                    'Coil stock rows can be open or closed, which feeds the Stock Report and Closed Coils reporting.'
+                'Stock Rows And Coils' => array(
+                    'Stock rows sit under inventory master items and represent actual available stock, coil serials, received items, or quantities.',
+                    'Coil rows can be open or closed. Closed coils are filtered in reports and production stock selection.',
+                    'Purchase receiving can create inventory stock rows automatically.',
+                    'Be careful editing stock rows because production, reports, and stock valuation depend on them.'
+                ),
+                'Fields That Matter To Other Pages' => array(
+                    'Unit and metre/unit settings affect quantity calculations.',
+                    'Weight unit affects pack weights and production summaries.',
+                    'Raw material and group settings affect production queues and stock reports.',
+                    'Buy rate and sell/rate fields affect report values and order pricing.'
                 )
             )
         ),
         'admin_reports' => array(
             'title' => 'Reports Help',
-            'subtitle' => 'Reports provide stock, coil, sales, invoice, and export views.',
+            'subtitle' => 'Reports turn order, invoice, coil, stock, and inventory data into views for checking business performance and stock position.',
             'sections' => array(
                 'Stock Report' => array(
-                    'Filter by inventory group, Finished / Not Finished, and Coil Closed / Open.',
-                    'Use this to review available stock and coil value by part and serial number.'
+                    'Use the Stock tab to review stock by inventory item and stock/coil row.',
+                    'Group filter lets you narrow the report to classes such as Coil or Hardware.',
+                    'Finished filter lets you show All, Finished, or Not Finished items from tblInventory.item_finished.',
+                    'Coil Closed filter lets you show all coils/stock rows, only closed rows, or only open rows from tblInventoryItems.coil_finished.',
+                    'The value column is calculated from quantity, metre/unit, and buy rate where possible.'
                 ),
-                'Other Reports' => array(
-                    'Items Invoice and Sales reports focus on invoiced sales history.',
-                    'Coil reports help review coil movement and closed coils.',
-                    'CSV buttons export the selected report data where available.'
+                'Invoice And Sales Reports' => array(
+                    'Items Invoice reports are for invoiced item history and can be filtered by date/part where available.',
+                    'Sales 12 Month shows sales trend information over the last year.',
+                    'Use CSV export buttons where available when you need spreadsheet analysis.'
+                ),
+                'Coil Reports' => array(
+                    'Coil 12 Month is for coil movement/reporting over time.',
+                    'Closed Coils helps review coils that have been marked closed.',
+                    'If a coil appears in the wrong report, check the inventory stock row and its coil closed/finished settings.'
                 )
             )
         ),
         'admin_git_update' => array(
             'title' => 'Git Update Help',
-            'subtitle' => 'Use this page to deploy the latest approved GitHub version to cPanel.',
+            'subtitle' => 'Git Update deploys the latest approved app version from GitHub to the cPanel public_html folder.',
             'sections' => array(
-                'Deploy Flow' => array(
-                    'Local changes are committed and pushed to GitHub first.',
-                    'Git Update downloads the latest GitHub ZIP and copies the app folder to public_html.',
-                    'The page shows current version, remote status, recent commits, and deploy output.'
+                'Normal Deploy Flow' => array(
+                    'Code changes are made locally, committed to Git, and pushed to GitHub first.',
+                    'Open Git Update inside RevolveX after the GitHub push is complete.',
+                    'Check Remote Status. If it says an update is available, click Download & Deploy.',
+                    'The deployer downloads the GitHub ZIP and copies the app folder into public_html.',
+                    'After deploy, refresh the target app page and test the changed area.'
                 ),
-                'Safety' => array(
-                    'Use this instead of direct FTP when possible so changes stay in history.',
-                    'If deployment fails, read the Deploy Output panel before retrying.'
+                'What The Panels Mean' => array(
+                    'Current Version shows the version currently deployed to the app.',
+                    'Remote Status tells you whether GitHub has newer code.',
+                    'Recent Changes lists recent commits so you can confirm what you are about to deploy.',
+                    'Deploy Output shows diagnostics and any error messages if deployment fails.'
+                ),
+                'Safety Notes' => array(
+                    'Use Git Update instead of direct FTP where possible so changes stay traceable.',
+                    'If deployment fails, do not keep clicking blindly. Read the Deploy Output first.',
+                    'If the Git Update page itself is broken, cPanel deploy may be needed to restore it.'
                 )
             )
         ),
         'admin_company' => array(
             'title' => 'Company Setup Help',
-            'subtitle' => 'Company setup controls users, groups, business details, and configuration lists.',
+            'subtitle' => 'Company Setup controls shared lists and configuration used throughout the app.',
             'sections' => array(
-                'Setup Flow' => array(
-                    'Manage users, access groups, company details, item units, item groups, order statuses, purchase statuses, and sources.',
-                    'Changes here affect dropdowns and workflows across orders, purchases, inventory, and reports.'
+                'What Is Managed Here' => array(
+                    'Company details and branding are used across documents, headers, emails, and business settings.',
+                    'Users and groups control who can access the system and what actions they can perform.',
+                    'Item Units and Item Groups control inventory classification and calculations.',
+                    'Order Status and Purchase Status control workflow stages shown in lists and pages.',
+                    'Source controls sales/source dropdown values on orders.'
                 ),
-                'Caution' => array(
-                    'Do not remove statuses or groups currently used by orders, purchases, or inventory.',
-                    'Permission and deletion settings should be changed carefully.'
+                'Important Caution' => array(
+                    'Do not delete or rename statuses without checking active orders and purchases first.',
+                    'Do not remove inventory groups that are already used by inventory items.',
+                    'Permission changes can affect who can delete records, update activity, or access deployment tools.',
+                    'If a dropdown looks wrong elsewhere, check the matching setup list here.'
                 )
             )
         )
@@ -209,23 +306,26 @@ function pageHelpData($pageKey) {
         'title' => 'Page Help',
         'subtitle' => 'This page is part of the RevolveX workflow.',
         'sections' => array(
-            'General Flow' => array(
+            'How To Use This Page' => array(
                 'Use the page controls to search, filter, open records, and save changes.',
                 'Important order and purchase changes should create activity records.',
-                'If something looks wrong, check the related Activity tab or dashboard recent activity.'
+                'If something looks wrong, check the related Activity tab or dashboard recent activity.',
+                'If you are unsure what a button does, stop and check whether the action prints, emails, saves, deletes, receives, invoices, or changes status.'
             )
         )
     );
 }
 
-function renderPageHelpButtonAndModal() {
-    $help = pageHelpData(pageHelpCurrentKey());
+function renderPageHelpStyles() {
     ?>
     <style>
         .page-help-btn {
             border-radius: 999px;
             font-weight: 700;
             padding: 0.35rem 0.7rem;
+        }
+        .page-help-modal {
+            z-index: 1065;
         }
         .page-help-modal .modal-content {
             border: 0;
@@ -243,6 +343,7 @@ function renderPageHelpButtonAndModal() {
         .page-help-subtitle {
             color: #5d6a7d;
             font-size: 0.9rem;
+            line-height: 1.4;
         }
         .page-help-section {
             border: 1px solid #e2e8f0;
@@ -256,14 +357,27 @@ function renderPageHelpButtonAndModal() {
             margin-bottom: 0.55rem;
         }
         .page-help-section li {
-            margin-bottom: 0.35rem;
+            line-height: 1.45;
+            margin-bottom: 0.45rem;
         }
     </style>
+    <?php
+}
+
+function renderPageHelpButton() {
+    renderPageHelpStyles();
+    ?>
     <li class="nav-item me-2">
         <button type="button" class="btn btn-sm btn-outline-primary page-help-btn" data-bs-toggle="modal" data-bs-target="#pageHelpModal">
             <i class="bx bx-help-circle"></i> Help
         </button>
     </li>
+    <?php
+}
+
+function renderPageHelpModal() {
+    $help = pageHelpData(pageHelpCurrentKey());
+    ?>
     <div class="modal fade page-help-modal" id="pageHelpModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-scrollable">
             <div class="modal-content">
