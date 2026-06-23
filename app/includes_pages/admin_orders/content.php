@@ -115,6 +115,57 @@ function orderContentColumnExists($conn, $columnName) {
     $cache[$key] = (bool)$stmt->fetch(PDO::FETCH_ASSOC);
     return $cache[$key];
 }
+
+function syncOrderCompletedItemsFromLinkedPurchases($conn, $order_id, $company_id) {
+    if (!orderContentColumnExists($conn, 'item_completed')) {
+        return;
+    }
+
+    $fields = "oi.item_completed = 1";
+    if (orderContentColumnExists($conn, 'item_completed_at')) {
+        $fields .= ", oi.item_completed_at = COALESCE(NULLIF(oi.item_completed_at, 0), :completed_at)";
+    }
+    if (orderContentColumnExists($conn, 'item_completed_by')) {
+        $fields .= ", oi.item_completed_by = COALESCE(NULLIF(oi.item_completed_by, 0), :completed_by)";
+    }
+
+    $stmt = $conn->prepare("
+        UPDATE tblOrderItems oi
+        INNER JOIN tblPurchaseOrders po
+            ON po.id = oi.purchased_item
+           AND po.company_id = oi.company_id
+        LEFT JOIN tblPurchaseStatus ps
+            ON ps.id = po.order_status_id
+           AND ps.company_id = po.company_id
+        LEFT JOIN (
+            SELECT DISTINCT company_id, pid
+            FROM tblPurchaseInvoice
+        ) pi
+            ON pi.pid = po.id
+           AND pi.company_id = po.company_id
+        SET {$fields}
+        WHERE oi.company_id = :company_id
+          AND oi.order_id = :order_id
+          AND oi.purchased_item IS NOT NULL
+          AND oi.purchased_item <> ''
+          AND oi.purchased_item <> 0
+          AND COALESCE(oi.item_completed, 0) = 0
+          AND (
+                LOWER(COALESCE(ps.description, '')) LIKE '%receiv%'
+                OR LOWER(COALESCE(ps.description, '')) LIKE '%invoic%'
+                OR pi.pid IS NOT NULL
+              )
+    ");
+    if (orderContentColumnExists($conn, 'item_completed_at')) {
+        $stmt->bindValue(':completed_at', time(), PDO::PARAM_INT);
+    }
+    if (orderContentColumnExists($conn, 'item_completed_by')) {
+        $stmt->bindValue(':completed_by', (int)$_SESSION['session_user_id'], PDO::PARAM_INT);
+    }
+    $stmt->bindValue(':company_id', $company_id, PDO::PARAM_INT);
+    $stmt->bindValue(':order_id', $order_id, PDO::PARAM_INT);
+    $stmt->execute();
+}
     $tab_id = $_POST['tab_id'];
     if ($tab_id == 'home') {
             $data = ' <div class="row">
@@ -335,6 +386,9 @@ function orderContentColumnExists($conn, $columnName) {
 
   if ($tab_id == 'order_items') {
     $hasItemCompleted = orderContentColumnExists($conn, 'item_completed');
+    if ($hasItemCompleted) {
+        syncOrderCompletedItemsFromLinkedPurchases($conn, (int)$_POST['order_id'], (int)$_SESSION['session_company_id']);
+    }
     $query = "SELECT * FROM tblOrderItems  WHERE company_id = :company_id AND order_id = :order_id ";
     $statement = $conn->prepare($query);
     $statement->bindValue(':company_id', $_SESSION['session_company_id'], PDO::PARAM_INT);

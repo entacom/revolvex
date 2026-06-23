@@ -247,6 +247,57 @@ function orderCompletionColumnsExist($conn) {
     return orderItemColumnExists($conn, 'item_completed');
 }
 
+function syncOrderCompletedItemsFromLinkedPurchasesCrud($conn, $order_id, $company_id, $user_id) {
+    if (!orderCompletionColumnsExist($conn)) {
+        return;
+    }
+
+    $fields = "oi.item_completed = 1";
+    if (orderItemColumnExists($conn, 'item_completed_at')) {
+        $fields .= ", oi.item_completed_at = COALESCE(NULLIF(oi.item_completed_at, 0), :completed_at)";
+    }
+    if (orderItemColumnExists($conn, 'item_completed_by')) {
+        $fields .= ", oi.item_completed_by = COALESCE(NULLIF(oi.item_completed_by, 0), :completed_by)";
+    }
+
+    $stmt = $conn->prepare("
+        UPDATE tblOrderItems oi
+        INNER JOIN tblPurchaseOrders po
+            ON po.id = oi.purchased_item
+           AND po.company_id = oi.company_id
+        LEFT JOIN tblPurchaseStatus ps
+            ON ps.id = po.order_status_id
+           AND ps.company_id = po.company_id
+        LEFT JOIN (
+            SELECT DISTINCT company_id, pid
+            FROM tblPurchaseInvoice
+        ) pi
+            ON pi.pid = po.id
+           AND pi.company_id = po.company_id
+        SET {$fields}
+        WHERE oi.company_id = :company_id
+          AND oi.order_id = :order_id
+          AND oi.purchased_item IS NOT NULL
+          AND oi.purchased_item <> ''
+          AND oi.purchased_item <> 0
+          AND COALESCE(oi.item_completed, 0) = 0
+          AND (
+                LOWER(COALESCE(ps.description, '')) LIKE '%receiv%'
+                OR LOWER(COALESCE(ps.description, '')) LIKE '%invoic%'
+                OR pi.pid IS NOT NULL
+              )
+    ");
+    if (orderItemColumnExists($conn, 'item_completed_at')) {
+        $stmt->bindValue(':completed_at', time(), PDO::PARAM_INT);
+    }
+    if (orderItemColumnExists($conn, 'item_completed_by')) {
+        $stmt->bindValue(':completed_by', $user_id, PDO::PARAM_INT);
+    }
+    $stmt->bindValue(':company_id', $company_id, PDO::PARAM_INT);
+    $stmt->bindValue(':order_id', $order_id, PDO::PARAM_INT);
+    $stmt->execute();
+}
+
 function getOrderCompletionSummary($conn, $order_id, $company_id) {
     $summary = array(
         'completed' => 0,
@@ -259,6 +310,8 @@ function getOrderCompletionSummary($conn, $order_id, $company_id) {
     if (!orderCompletionColumnsExist($conn)) {
         return $summary;
     }
+
+    syncOrderCompletedItemsFromLinkedPurchasesCrud($conn, $order_id, $company_id, (int)$_SESSION['session_user_id']);
 
     $stmt = $conn->prepare("
         SELECT

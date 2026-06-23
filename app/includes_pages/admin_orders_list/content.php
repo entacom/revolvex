@@ -26,6 +26,51 @@ function ordersListCompletionSummary($conn, $order_id, $company_id, $delivery_da
         return $summary;
     }
 
+    $syncFields = "oi.item_completed = 1";
+    if (ordersListColumnExists($conn, 'item_completed_at')) {
+        $syncFields .= ", oi.item_completed_at = COALESCE(NULLIF(oi.item_completed_at, 0), :completed_at)";
+    }
+    if (ordersListColumnExists($conn, 'item_completed_by')) {
+        $syncFields .= ", oi.item_completed_by = COALESCE(NULLIF(oi.item_completed_by, 0), :completed_by)";
+    }
+
+    $syncStmt = $conn->prepare("
+        UPDATE tblOrderItems oi
+        INNER JOIN tblPurchaseOrders po
+            ON po.id = oi.purchased_item
+           AND po.company_id = oi.company_id
+        LEFT JOIN tblPurchaseStatus ps
+            ON ps.id = po.order_status_id
+           AND ps.company_id = po.company_id
+        LEFT JOIN (
+            SELECT DISTINCT company_id, pid
+            FROM tblPurchaseInvoice
+        ) pi
+            ON pi.pid = po.id
+           AND pi.company_id = po.company_id
+        SET {$syncFields}
+        WHERE oi.company_id = :sync_company_id
+          AND oi.order_id = :sync_order_id
+          AND oi.purchased_item IS NOT NULL
+          AND oi.purchased_item <> ''
+          AND oi.purchased_item <> 0
+          AND COALESCE(oi.item_completed, 0) = 0
+          AND (
+                LOWER(COALESCE(ps.description, '')) LIKE '%receiv%'
+                OR LOWER(COALESCE(ps.description, '')) LIKE '%invoic%'
+                OR pi.pid IS NOT NULL
+              )
+    ");
+    if (ordersListColumnExists($conn, 'item_completed_at')) {
+        $syncStmt->bindValue(':completed_at', time(), PDO::PARAM_INT);
+    }
+    if (ordersListColumnExists($conn, 'item_completed_by')) {
+        $syncStmt->bindValue(':completed_by', (int)$_SESSION['session_user_id'], PDO::PARAM_INT);
+    }
+    $syncStmt->bindValue(':sync_company_id', $company_id, PDO::PARAM_INT);
+    $syncStmt->bindValue(':sync_order_id', $order_id, PDO::PARAM_INT);
+    $syncStmt->execute();
+
     $stmt = $conn->prepare("
         SELECT
             COUNT(*) AS total_items,

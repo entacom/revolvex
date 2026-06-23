@@ -295,6 +295,73 @@ function setOrderItemsCompletedFromPurchase($conn, $pid, $company_id, $completed
     return array('rows' => $update->rowCount(), 'order_ids' => $orderIds);
 }
 
+function purchaseStatusCompletesLinkedOrderItems($conn, $status_id, $company_id) {
+    if (empty($status_id)) {
+        return false;
+    }
+
+    $stmt = $conn->prepare("
+        SELECT description
+        FROM tblPurchaseStatus
+        WHERE id = :status_id
+          AND company_id = :company_id
+        LIMIT 1
+    ");
+    $stmt->bindValue(':status_id', (int)$status_id, PDO::PARAM_INT);
+    $stmt->bindValue(':company_id', (int)$company_id, PDO::PARAM_INT);
+    $stmt->execute();
+    $status = strtolower((string)$stmt->fetchColumn());
+
+    return strpos($status, 'receiv') !== false || strpos($status, 'invoic') !== false;
+}
+
+function purchaseHasInvoiceRows($conn, $pid, $company_id) {
+    $stmt = $conn->prepare("
+        SELECT COUNT(*)
+        FROM tblPurchaseInvoice
+        WHERE pid = :pid
+          AND company_id = :company_id
+    ");
+    $stmt->bindValue(':pid', (int)$pid, PDO::PARAM_INT);
+    $stmt->bindValue(':company_id', (int)$company_id, PDO::PARAM_INT);
+    $stmt->execute();
+
+    return (int)$stmt->fetchColumn() > 0;
+}
+
+function syncLinkedOrderItemsForPurchaseCompletion($conn, $pid, $company_id, $user_id, $sourceLabel) {
+    $stmt = $conn->prepare("
+        SELECT order_status_id
+        FROM tblPurchaseOrders
+        WHERE id = :pid
+          AND company_id = :company_id
+        LIMIT 1
+    ");
+    $stmt->bindValue(':pid', (int)$pid, PDO::PARAM_INT);
+    $stmt->bindValue(':company_id', (int)$company_id, PDO::PARAM_INT);
+    $stmt->execute();
+    $statusId = $stmt->fetchColumn();
+
+    if (!purchaseStatusCompletesLinkedOrderItems($conn, $statusId, $company_id)
+        && !purchaseHasInvoiceRows($conn, $pid, $company_id)) {
+        return array('rows' => 0, 'order_ids' => array());
+    }
+
+    $linkedOrders = setOrderItemsCompletedFromPurchase($conn, (int)$pid, (int)$company_id, true, (int)$user_id);
+    if (!empty($linkedOrders['rows'])) {
+        addPurchaseActivity(
+            $pid,
+            $company_id,
+            5,
+            'Linked customer order item(s) completed from ' . $sourceLabel . ': ' . (int)$linkedOrders['rows'],
+            $user_id,
+            0
+        );
+    }
+
+    return $linkedOrders;
+}
+
 function getPurchaseActivityRow($conn, $pid, $company_id) {
     $query = "SELECT * FROM tblPurchaseOrders WHERE id = :pid AND company_id = :company_id";
     $stmt = $conn->prepare($query);
@@ -873,6 +940,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     addPurchaseActivity($data['pid'], $company_id, 5, $activityDescription, $_SESSION['session_user_id'], 0);
                 }
             }
+            syncLinkedOrderItemsForPurchaseCompletion($conn, (int)$data['pid'], (int)$company_id, (int)$_SESSION['session_user_id'], 'purchase status');
             echo json_encode(['success' => true, 'message' => 'Updated successfully.']);
         } else {
             echo json_encode(['success' => true, 'message' => 'No changes made.']);
@@ -1527,6 +1595,7 @@ if (isset($data_raw['action']) && $data_raw['action'] == 'receive_invoice') {
             if ($existingPurchase) {
                 addPurchaseActivity($pid, $company_id, 5, 'Invoice details updated: Date ' . purchaseActivityDateText($existingPurchase['invoice_date']) . ' -> ' . purchaseActivityDateText(strtotime($data['invoice_date'])) . ', Reference/notes updated', $_SESSION['session_user_id'], 0);
             }
+            syncLinkedOrderItemsForPurchaseCompletion($conn, (int)$pid, (int)$company_id, (int)$_SESSION['session_user_id'], 'purchase invoice details');
             echo json_encode(['success' => true, 'message' => 'Updated successfully.']);
         } else {
             echo json_encode(['warning' => true, 'message' => 'No changes made.']);
@@ -1715,6 +1784,7 @@ if (isset($data_raw['action']) && $data_raw['action'] == 'convert_to_bill') {
         }
 
         addPurchaseActivity($pid, $company_id, 5, 'Invoice converted: Bill items copied to purchase invoice', $_SESSION['session_user_id'], 0);
+        syncLinkedOrderItemsForPurchaseCompletion($conn, (int)$pid, (int)$company_id, (int)$_SESSION['session_user_id'], 'purchase invoice conversion');
         echo json_encode(['success' => true, 'message' => 'Invoice conversion successful.']);
 
     } catch (Exception $e) {
