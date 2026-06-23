@@ -35,6 +35,7 @@ The current product goal is to keep improving the system as a practical business
 - Production: purchased items copied to PO are excluded from production and production exports; production rows can also be manually marked as purchased from the queue.
 - Reports and Inventory: refreshed layouts, report inputs, inventory row styling, stock status pills, Finished filter on stock report, inventory group filter, and coil open/closed filter.
 - Orders and Purchasing: order items can now be marked completed, order/list views can show item completion tallies and due-date risk styling, and linked purchase receives can complete the matching order lines.
+- Help: the admin header now includes a page-aware Help modal for dashboard, quotes, orders, purchases, production, inventory, reports, deployment, and setup flows.
 - Uploads/files: order attachment upload validation, safer JSON upload errors, S3 presigned URL normalization, and ownership-checked order attachment deletion.
 - Security: disabled dynamic table API, disabled diagnostic/test endpoints, blocked public metadata/log/backup/cert files, removed Dreamweaver `_notes`, removed `?d=` session dump, added first-pass auth guards to high-risk endpoints.
 - Dependencies: updated TCPDF to `6.7.8`, PHPMailer to `6.12.0`, Bootstrap to `5.3.8`, jQuery UI to `1.14.2`; removed unused public Chart.js, Quill, PHP Email Form, Remix Icon, Simple DataTables, TinyMCE, and public AWS SDK copy.

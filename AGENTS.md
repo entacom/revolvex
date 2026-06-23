@@ -73,6 +73,7 @@
    - Admin Production now excludes order sub-items whose parent `tblOrderItems.purchased_item` is set, including production CSV export and match-item selection lists.
    - Admin Production now has a per-row Purchased checkbox that sets `tblOrderItems.purchased_item = 1`, records order activity, and removes the item from the production queue.
    - Order item completion is being tracked through `tblOrderItems.item_completed`, with manual item checkboxes, order/list completion tallies, due-date red warning styling, and linked PO receive/reverse receive updates.
+   - Global admin header now includes a page-aware Help button and large modal explaining the current page and workflow.
    - Admin order header actions now use separate Print and Email dropdown buttons.
    - Admin order header now includes a Process Order button in the action area. The modal groups upload original, email/print order confirmation, print production cards, print labels, print delivery docket, and process-to-production actions.
    - Quote workflow now has its own Process Quote modal with payment-required/payment-received tracking, quote print/email activity, and convert-to-order handling.

@@ -1,3 +1,4 @@
+<?php include_once(__DIR__ . '/page_help.php'); ?>
 <header id="header" class="header fixed-top d-flex align-items-center">
     <div class="d-flex align-items-center justify-content-between">
         <a href="/" class="logo d-flex align-items-center">
@@ -19,6 +20,7 @@
                     <i class="bx bx-search"></i>
                 </a>
             </li>
+            <?php renderPageHelpButtonAndModal(); ?>
             <li class="nav-item dropdown pe-3">
                 <a class="nav-link nav-profile d-flex align-items-center pe-0" href="#" data-bs-toggle="dropdown">
                     <span class="d-none d-md-block dropdown-toggle ps-2"><?php echo $_SESSION['session_first_lastname']; ?></span>
