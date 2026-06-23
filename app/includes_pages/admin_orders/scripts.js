@@ -1764,7 +1764,9 @@ function loadProcessOrderActivity() {
         success: function(response) {
             if (response && response.success) {
                 renderProcessOrderActivity(response.history || {});
-                renderProcessOrderSummary(response.summary || {});
+                if (response.summary) {
+                    renderProcessOrderSummary(response.summary);
+                }
             }
         }
     });
@@ -1827,14 +1829,49 @@ function ProcessOrderPrintConfirmation() {
 }
 
 function ProcessOrderPrintProductionCards() {
-    if (!processOrderCurrentSummary || Number(processOrderCurrentSummary.manufactured_items || 0) <= 0) {
-        alert('No manufactured items found for this order.');
+    var processOrderId = getProcessOrderId();
+    if (!processOrderId) {
+        alert('Missing order id.');
         return;
     }
-    recordProcessOrderActivity('production_cards_printed', function() {
-        loadProcessOrderActivity();
+
+    var printWindow = window.open('', '_blank');
+    $.ajax({
+        url: crud_url,
+        type: 'POST',
+        data: JSON.stringify({
+            action: 'get_process_order_summary',
+            order_id: processOrderId
+        }),
+        contentType: 'application/json',
+        dataType: 'json',
+        success: function(response) {
+            var summary = response && response.summary ? response.summary : {};
+            renderProcessOrderSummary(summary);
+            if (Number(summary.manufactured_items || 0) <= 0) {
+                if (printWindow) {
+                    printWindow.close();
+                }
+                alert('No manufactured items found for this order.');
+                return;
+            }
+
+            if (printWindow) {
+                printWindow.location.href = 'pdf/sales_production_v2.php?order_id=' + encodeURIComponent(processOrderId);
+            } else {
+                PrintProdCardAll(processOrderId);
+            }
+            recordProcessOrderActivity('production_cards_printed', function() {
+                loadProcessOrderActivity();
+            });
+        },
+        error: function(xhr) {
+            if (printWindow) {
+                printWindow.close();
+            }
+            alert(xhr.responseText || 'Could not load production card summary.');
+        }
     });
-    PrintProdCardAll(getProcessOrderId());
 }
 
 function ProcessOrderSaveProductionCsvs() {
@@ -1921,21 +1958,57 @@ function loadProcessOrderSummary() {
 
 function ProcessOrderPrintLabels(labelType) {
     var processOrderId = getProcessOrderId();
-    if (!processOrderCurrentSummary || Number(processOrderCurrentSummary.packs || 0) <= 0) {
-        alert('No packs found for this order. Create packs before printing labels.');
+    if (!processOrderId) {
+        alert('Missing order id.');
         return;
     }
-    if (labelType === 'zebra') {
-        recordProcessOrderActivity('labels_zebra_printed', function() {
-            loadProcessOrderActivity();
-        });
-        PrintPackAllZeb(processOrderId);
-        return;
-    }
-    recordProcessOrderActivity('labels_dymo_printed', function() {
-        loadProcessOrderActivity();
+
+    var printWindow = window.open('', '_blank');
+    $.ajax({
+        url: crud_url,
+        type: 'POST',
+        data: JSON.stringify({
+            action: 'get_process_order_summary',
+            order_id: processOrderId
+        }),
+        contentType: 'application/json',
+        dataType: 'json',
+        success: function(response) {
+            var summary = response && response.summary ? response.summary : {};
+            renderProcessOrderSummary(summary);
+            if (Number(summary.packs || 0) <= 0) {
+                if (printWindow) {
+                    printWindow.close();
+                }
+                alert('No packs found for this order. Create packs before printing labels.');
+                return;
+            }
+
+            var isZebra = labelType === 'zebra';
+            var workflowType = isZebra ? 'labels_zebra_printed' : 'labels_dymo_printed';
+            var pdfUrl = isZebra
+                ? 'pdf/label_all_v5.php?order_id=' + encodeURIComponent(processOrderId)
+                : 'pdf/label_all_v1.php?order_id=' + encodeURIComponent(processOrderId);
+
+            if (printWindow) {
+                printWindow.location.href = pdfUrl;
+            } else if (isZebra) {
+                PrintPackAllZeb(processOrderId);
+            } else {
+                PrintPackAll(processOrderId);
+            }
+
+            recordProcessOrderActivity(workflowType, function() {
+                loadProcessOrderActivity();
+            });
+        },
+        error: function(xhr) {
+            if (printWindow) {
+                printWindow.close();
+            }
+            alert(xhr.responseText || 'Could not load pack summary.');
+        }
     });
-    PrintPackAll(processOrderId);
 }
 
 function ProcessOrderPrintDelivery() {

@@ -490,12 +490,15 @@ function getProcessOrderSummary($conn, $order_id, $company_id) {
     );
 
     $packStmt = $conn->prepare("
-        SELECT pack_number
+        SELECT DISTINCT pack_number
         FROM tblOrderPacks
         WHERE order_id = :order_id
+          AND company_id = :company_id
+          AND pack_number > 0
         ORDER BY pack_number
     ");
     $packStmt->bindValue(':order_id', $order_id, PDO::PARAM_INT);
+    $packStmt->bindValue(':company_id', $company_id, PDO::PARAM_INT);
     $packStmt->execute();
     $packNumbers = $packStmt->fetchAll(PDO::FETCH_COLUMN);
     $summary['packs'] = count($packNumbers);
@@ -504,10 +507,12 @@ function getProcessOrderSummary($conn, $order_id, $company_id) {
         SELECT DISTINCT pack_id
         FROM tblOrderSubItems
         WHERE order_id = :order_id
+          AND company_id = :company_id
           AND pack_id > 0
         ORDER BY pack_id
     ");
     $packFallbackStmt->bindValue(':order_id', $order_id, PDO::PARAM_INT);
+    $packFallbackStmt->bindValue(':company_id', $company_id, PDO::PARAM_INT);
     $packFallbackStmt->execute();
     $subItemPackNumbers = $packFallbackStmt->fetchAll(PDO::FETCH_COLUMN);
 
@@ -520,8 +525,10 @@ function getProcessOrderSummary($conn, $order_id, $company_id) {
         SELECT part_number
         FROM tblOrderItems
         WHERE order_id = :order_id
+          AND company_id = :company_id
     ");
     $itemStmt->bindValue(':order_id', $order_id, PDO::PARAM_INT);
+    $itemStmt->bindValue(':company_id', $company_id, PDO::PARAM_INT);
     $itemStmt->execute();
     $partNumbers = $itemStmt->fetchAll(PDO::FETCH_COLUMN);
     $summary['total_items'] = count($partNumbers);
@@ -531,9 +538,11 @@ function getProcessOrderSummary($conn, $order_id, $company_id) {
             SELECT DISTINCT part_number
             FROM tblOrderSubItems
             WHERE order_id = :order_id
+              AND company_id = :company_id
               AND COALESCE(part_number, '') <> ''
         ");
         $subItemStmt->bindValue(':order_id', $order_id, PDO::PARAM_INT);
+        $subItemStmt->bindValue(':company_id', $company_id, PDO::PARAM_INT);
         $subItemStmt->execute();
         $partNumbers = $subItemStmt->fetchAll(PDO::FETCH_COLUMN);
         $summary['total_items'] = count($partNumbers);
@@ -549,8 +558,10 @@ function getProcessOrderSummary($conn, $order_id, $company_id) {
         SELECT COALESCE(SUM(weight), 0)
         FROM tblOrderSubItems
         WHERE order_id = :order_id
+          AND company_id = :company_id
     ");
     $weightStmt->bindValue(':order_id', $order_id, PDO::PARAM_INT);
+    $weightStmt->bindValue(':company_id', $company_id, PDO::PARAM_INT);
     $weightStmt->execute();
     $summary['weight_kg'] = (float)$weightStmt->fetchColumn();
 
@@ -900,7 +911,8 @@ if (isset($data_raw['action']) && $data_raw['action'] === 'get_process_order_act
 
         echo json_encode([
             'success' => true,
-            'history' => getProcessOrderWorkflowActivity($conn, $order_id, $company_id)
+            'history' => getProcessOrderWorkflowActivity($conn, $order_id, $company_id),
+            'summary' => getProcessOrderSummary($conn, $order_id, $company_id)
         ]);
         exit;
     } catch (Exception $e) {
